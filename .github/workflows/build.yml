@@ -1,0 +1,118 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Generate version
+        id: version
+        run: echo "version=$(date -u +%Y%m%d.%H%M)" >> $GITHUB_OUTPUT
+
+  build-macos:
+    name: build-macos
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: false
+
+      - name: Build
+        run: go build -ldflags="-X main.version=${{ needs.version.outputs.version }}" -o pink-orchestrator-darwin-arm64 .
+
+      - name: Test
+        run: ./pink-orchestrator-darwin-arm64 --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pink-orchestrator-darwin-arm64
+          path: pink-orchestrator-darwin-arm64
+
+  build-linux:
+    name: build-linux
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: false
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libayatana-appindicator3-dev
+
+      - name: Build
+        run: go build -ldflags="-X main.version=${{ needs.version.outputs.version }}" -o pink-orchestrator-linux-amd64 .
+
+      - name: Test
+        run: ./pink-orchestrator-linux-amd64 --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pink-orchestrator-linux-amd64
+          path: pink-orchestrator-linux-amd64
+
+  build-windows:
+    name: build-windows
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: false
+
+      - name: Build
+        run: go build -ldflags="-X main.version=${{ needs.version.outputs.version }}" -o pink-orchestrator-windows-amd64.exe .
+
+      - name: Test
+        run: ./pink-orchestrator-windows-amd64.exe --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pink-orchestrator-windows-amd64.exe
+          path: pink-orchestrator-windows-amd64.exe
+
+  release:
+    needs: [version, build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Delete old release
+        run: gh release delete latest --yes || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Delete old tag
+        run: git push origin :refs/tags/latest || true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: pink-orchestrator ${{ needs.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          files: dist/*
