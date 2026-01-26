@@ -64,6 +64,7 @@ jobs:
           cache: false
 
       - name: Build
+        shell: bash
         run: go build -ldflags="-X main.version=${GITHUB_REF_NAME#v}" -o pink-orchestrator-windows-amd64.exe .
 
       - name: Test run
