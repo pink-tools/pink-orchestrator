@@ -136,8 +136,29 @@ func GetInstalledVersion(name string) string {
 }
 
 // isNewer returns true if latest version is newer than installed
-// If installed is not valid semver (legacy) — always update
+// If installed is legacy date format (YYYYMMDD.HHMM) — always update
 func isNewer(latest, installed string) bool {
+	// Legacy detection: date format YYYYMMDD.HHMM (major version > 10000)
+	isLegacy := func(v string) bool {
+		v = strings.TrimPrefix(v, "v")
+		parts := strings.Split(v, ".")
+		if len(parts) > 0 && len(parts[0]) > 4 {
+			return true
+		}
+		return false
+	}
+
+	// Installed is legacy? → always update
+	if isLegacy(installed) {
+		return true
+	}
+
+	// Latest is legacy? → don't update (shouldn't happen)
+	if isLegacy(latest) {
+		return false
+	}
+
+	// Normal semver comparison
 	latestV := latest
 	installedV := installed
 	if !strings.HasPrefix(latestV, "v") {
@@ -147,13 +168,7 @@ func isNewer(latest, installed string) bool {
 		installedV = "v" + installedV
 	}
 
-	// Installed not semver (legacy)? → always update
-	if !semver.IsValid(installedV) {
-		return true
-	}
-
-	// Latest not semver? → don't update
-	if !semver.IsValid(latestV) {
+	if !semver.IsValid(latestV) || !semver.IsValid(installedV) {
 		return false
 	}
 
