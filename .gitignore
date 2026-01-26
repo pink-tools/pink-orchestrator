@@ -1,0 +1,11 @@
+# Binary
+pink-orchestrator
+
+# Environment
+.env
+
+# AI docs (local only)
+ai-docs/
+
+# macOS
+.DS_Store
