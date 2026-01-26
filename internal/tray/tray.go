@@ -100,6 +100,23 @@ func (t *Tray) buildMenu() {
 
 	systray.AddSeparator()
 
+	mStartAll := systray.AddMenuItem("Start All", "")
+	mStopAll := systray.AddMenuItem("Stop All", "")
+
+	go func() {
+		for range mStartAll.ClickedCh {
+			go t.startAllServices()
+		}
+	}()
+
+	go func() {
+		for range mStopAll.ClickedCh {
+			go t.stopAllServices()
+		}
+	}()
+
+	systray.AddSeparator()
+
 	mUpdateAll := systray.AddMenuItem("Update All Services", "")
 	mUpdateOrch := systray.AddMenuItem("Update Orchestrator", "")
 
@@ -314,6 +331,40 @@ func truncate(s string, max int) string {
 		return s
 	}
 	return s[:max-3] + "..."
+}
+
+func (t *Tray) startAllServices() {
+	otel.Info(context.Background(), "starting all services")
+
+	for _, sm := range t.serviceMenus {
+		if !sm.isDaemon {
+			continue
+		}
+		status := services.GetStatus(sm.name)
+		if status.Status == services.StatusNotInstalled || status.Status == services.StatusRunning {
+			continue
+		}
+		otel.Info(context.Background(), "starting", map[string]any{"service": sm.name})
+		services.Start(sm.name)
+	}
+	t.updateMenus()
+}
+
+func (t *Tray) stopAllServices() {
+	otel.Info(context.Background(), "stopping all services")
+
+	for _, sm := range t.serviceMenus {
+		if !sm.isDaemon {
+			continue
+		}
+		status := services.GetStatus(sm.name)
+		if status.Status != services.StatusRunning {
+			continue
+		}
+		otel.Info(context.Background(), "stopping", map[string]any{"service": sm.name})
+		services.Stop(sm.name)
+	}
+	t.updateMenus()
 }
 
 func (t *Tray) updateAllServices() {
