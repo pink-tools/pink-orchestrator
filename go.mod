@@ -4,7 +4,7 @@ go 1.25.4
 
 require (
 	github.com/getlantern/systray v1.2.2
-	github.com/pink-tools/pink-otel v1.5.0
+	github.com/pink-tools/pink-otel v1.5.1
 	golang.org/x/mod v0.32.0
 	golang.org/x/sys v0.39.0
 	golang.org/x/term v0.38.0

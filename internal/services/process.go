@@ -53,7 +53,7 @@ func Start(name string) error {
 	if runtime.GOOS != "windows" && os.Getuid() == 0 {
 		sudoUser := os.Getenv("SUDO_USER")
 		if sudoUser != "" {
-			cmd = exec.Command("sudo", "-u", sudoUser, binary)
+			cmd = exec.Command("sudo", "-E", "-u", sudoUser, binary)
 		} else {
 			cmd = exec.Command(binary)
 		}
