@@ -1,0 +1,53 @@
+version: 1
+services:
+  - name: pink-transcriber
+    repo: pink-tools/pink-transcriber
+    type: daemon
+    system_deps:
+      - name: ffmpeg
+        brew: ffmpeg
+        apt: ffmpeg
+        winget: Gyan.FFmpeg
+
+  - name: pink-voice
+    repo: pink-tools/pink-voice
+    type: daemon
+    dependencies:
+      - pink-transcriber
+    env_vars:
+      - name: TRANSCRIPTION_PREFIX
+        default: ""
+
+  - name: pink-elevenlabs
+    repo: pink-tools/pink-elevenlabs
+    type: cli
+    env_vars:
+      - name: ELEVENLABS_API_KEY
+        required: true
+      - name: ELEVENLABS_TTS_VOICE_ID
+        default: ""
+      - name: ELEVENLABS_VOICE_CHANGE_ID
+        default: ""
+
+  - name: pink-agent
+    repo: pink-tools/pink-agent
+    type: daemon
+    claude_root: true
+    system_deps:
+      - name: git
+        winget: Git.Git
+      - name: cloudflared
+        brew: cloudflared
+        apt: cloudflared
+        winget: Cloudflare.cloudflared
+      - name: claude
+        unix_script: "curl -fsSL https://claude.ai/install.sh | bash"
+        winget: Anthropic.ClaudeCode
+    env_vars:
+      - name: TELEGRAM_BOT_TOKEN
+        required: true
+      - name: TELEGRAM_USER_ID
+        required: true
+      - name: TUNNEL_NAME
+        required: true
+        description: Named Cloudflare tunnel for permanent URL
