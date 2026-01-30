@@ -133,14 +133,14 @@ func runUnixUpdater(targetPath, newBinary string, pid int, autoRestart bool) err
 	if autoRestart {
 		script = fmt.Sprintf(`#!/bin/bash
 while kill -0 %d 2>/dev/null; do sleep 0.1; done
-sudo mv "%s" "%s"
+mv "%s" "%s"
 "%s" &
 rm "$0"
 `, pid, newBinary, targetPath, targetPath)
 	} else {
 		script = fmt.Sprintf(`#!/bin/bash
 while kill -0 %d 2>/dev/null; do sleep 0.1; done
-sudo mv "%s" "%s"
+mv "%s" "%s"
 rm "$0"
 `, pid, newBinary, targetPath)
 	}
