@@ -77,6 +77,7 @@ func main() {
 	}
 
 	otel.Init("pink-orchestrator", version)
+	otel.SetServiceNameWidth(registry.MaxServiceNameLen())
 
 	if err := config.EnsureDirs(); err != nil {
 		otel.Error(context.Background(), "failed to create directories", otel.Attr{"error", err.Error()})
