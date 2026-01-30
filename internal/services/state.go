@@ -37,7 +37,7 @@ func loadState() {
 		return
 	}
 	if err := json.Unmarshal(data, state); err != nil {
-		otel.Warn(context.Background(), "failed to parse state file", map[string]any{"error": err.Error()})
+		otel.Warn(context.Background(), "failed to parse state file", otel.Attr{"error", err.Error()})
 	}
 	if state.Installed == nil {
 		state.Installed = make(map[string]string)
@@ -92,7 +92,7 @@ func RestoreState() {
 
 	for _, name := range toStart {
 		if err := Start(name); err != nil {
-			otel.Warn(context.Background(), "failed to restore service", map[string]any{"service": name, "error": err.Error()})
+			otel.Warn(context.Background(), "failed to restore service", otel.Attr{"service", name}, otel.Attr{"error", err.Error()})
 		}
 	}
 }

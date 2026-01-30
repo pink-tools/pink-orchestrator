@@ -2,6 +2,8 @@ module github.com/pink-tools/pink-orchestrator
 
 go 1.25.4
 
+replace github.com/pink-tools/pink-otel => ../pink-otel
+
 require (
 	github.com/getlantern/systray v1.2.2
 	github.com/pink-tools/pink-otel v1.5.1

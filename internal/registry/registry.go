@@ -125,7 +125,7 @@ func refreshLocked() (*Registry, error) {
 	}
 
 	if err := os.WriteFile(config.RegistryCacheFile(), data, 0644); err != nil {
-		otel.Warn(context.Background(), "failed to cache registry", map[string]any{"error": err.Error()})
+		otel.Warn(context.Background(), "failed to cache registry", otel.Attr{"error", err.Error()})
 	}
 
 	cached = &reg
@@ -165,11 +165,12 @@ func IsDaemon(name string) bool {
 
 // MaxServiceNameLen returns the length of the longest service name
 func MaxServiceNameLen() int {
+	maxLen := len("pink-orchestrator") // orchestrator logs too but not in registry
+
 	reg, err := Load()
 	if err != nil {
-		return 16 // fallback
+		return maxLen
 	}
-	maxLen := 0
 	for _, svc := range reg.Services {
 		if len(svc.Name) > maxLen {
 			maxLen = len(svc.Name)

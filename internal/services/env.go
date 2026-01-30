@@ -13,8 +13,7 @@ import (
 func loadServiceEnv(name string) []string {
 	env := appendPinkToolsToPath(getSystemEnv())
 
-	// Force pretty log format and aligned output
-	env = append(env, "LOG_FORMAT=pretty")
+	// Service name width for log alignment (children output JSON, orchestrator formats)
 	env = append(env, fmt.Sprintf("PINK_LOG_WIDTH=%d", registry.MaxServiceNameLen()))
 
 	envFile := config.ServiceEnvFile(name)

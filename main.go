@@ -79,7 +79,7 @@ func main() {
 	otel.Init("pink-orchestrator", version)
 
 	if err := config.EnsureDirs(); err != nil {
-		otel.Error(context.Background(), "failed to create directories", map[string]any{"error": err.Error()})
+		otel.Error(context.Background(), "failed to create directories", otel.Attr{"error", err.Error()})
 		os.Exit(1)
 	}
 
@@ -91,11 +91,11 @@ func main() {
 
 	services.SetOrchestratorBinaryVersion(version)
 
-	otel.Info(context.Background(), "starting", map[string]any{"version": version, "port": config.Port()})
+	otel.Info(context.Background(), "started "+version, otel.Attr{"port", config.Port()})
 
 	apiServer, err := api.NewServer()
 	if err != nil {
-		otel.Error(context.Background(), "api server failed", map[string]any{"error": err.Error()})
+		otel.Error(context.Background(), "api server failed", otel.Attr{"error", err.Error()})
 		os.Exit(1)
 	}
 	go apiServer.Start()

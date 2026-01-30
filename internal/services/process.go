@@ -23,7 +23,7 @@ func Start(name string) error {
 
 	status := GetStatus(name)
 	if status.Status == StatusRunning {
-		otel.Info(context.Background(), "already running", map[string]any{"service": name})
+		otel.Info(context.Background(), name, otel.Attr{"status", "already running"})
 		return nil
 	}
 
@@ -35,7 +35,7 @@ func Start(name string) error {
 	for _, dep := range svc.Dependencies {
 		depStatus := GetStatus(dep)
 		if depStatus.Status != StatusRunning {
-			otel.Info(context.Background(), "starting dependency", map[string]any{"service": dep})
+			otel.Info(context.Background(), dep, otel.Attr{"status", "starting dependency"})
 			if err := Start(dep); err != nil {
 				return fmt.Errorf("failed to start dependency %s: %w", dep, err)
 			}
@@ -45,7 +45,7 @@ func Start(name string) error {
 	// Kill any existing process with same name (from previous session)
 	killExisting(name)
 
-	otel.Info(context.Background(), "starting", map[string]any{"service": name})
+	otel.Info(context.Background(), name, otel.Attr{"status", "starting"})
 	binary := config.ServiceBinary(name)
 
 	var cmd *exec.Cmd
@@ -96,9 +96,9 @@ func Start(name string) error {
 		mu.Unlock()
 		close(info.done)
 		if err != nil {
-			otel.Warn(context.Background(), "exited with error", map[string]any{"service": name, "error": err.Error()})
+			otel.Warn(context.Background(), name, otel.Attr{"status", "exited"}, otel.Attr{"error", err.Error()})
 		} else {
-			otel.Info(context.Background(), "exited", map[string]any{"service": name})
+			otel.Info(context.Background(), name, otel.Attr{"status", "exited"})
 		}
 	}()
 
@@ -114,7 +114,7 @@ func Stop(name string) error {
 		return nil
 	}
 
-	otel.Info(context.Background(), "stopping", map[string]any{"service": name})
+	otel.Info(context.Background(), name, otel.Attr{"status", "stopping"})
 
 	// IPC shutdown - no fallback, if it fails something is wrong
 	if !sendIPCStop(name) {
@@ -132,7 +132,7 @@ func Stop(name string) error {
 }
 
 func Restart(name string) error {
-	otel.Info(context.Background(), "restarting", map[string]any{"service": name})
+	otel.Info(context.Background(), name, otel.Attr{"status", "restarting"})
 	if err := Stop(name); err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func captureOutput(name string, r io.Reader, isStderr bool) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line != "" {
-			otel.Info(context.Background(), line, map[string]any{"source": name})
+			otel.PrintServiceLog(line)
 			updateServiceLog(name, line, isStderr)
 		}
 	}

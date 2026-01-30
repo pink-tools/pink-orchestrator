@@ -256,9 +256,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	go func() {
 		for range sm.mUpdate.ClickedCh {
 			go func() {
-				otel.Info(context.Background(), "updating", map[string]any{"service": name})
+				otel.Info(context.Background(), "updating", otel.Attr{"service", name})
 				services.Update(name, func(msg string) {
-					otel.Info(context.Background(), msg, map[string]any{"service": name})
+					otel.Info(context.Background(), msg, otel.Attr{"service", name})
 					services.SetLastStatus(name, msg)
 				})
 			}()
@@ -268,9 +268,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	go func() {
 		for range sm.mInstall.ClickedCh {
 			go func() {
-				otel.Info(context.Background(), "installing", map[string]any{"service": name})
+				otel.Info(context.Background(), "installing", otel.Attr{"service", name})
 				services.Install(name, func(msg string) {
-					otel.Info(context.Background(), msg, map[string]any{"service": name})
+					otel.Info(context.Background(), msg, otel.Attr{"service", name})
 					services.SetLastStatus(name, msg)
 				})
 			}()
@@ -308,9 +308,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 		for range sm.mCheck.ClickedCh {
 			version, err := services.Check(name)
 			if err != nil {
-				otel.Warn(context.Background(), "check failed", map[string]any{"service": name, "error": err.Error()})
+				otel.Warn(context.Background(), "check failed", otel.Attr{"service", name}, otel.Attr{"error", err.Error()})
 			} else {
-				otel.Info(context.Background(), "version", map[string]any{"service": name, "version": version})
+				otel.Info(context.Background(), "version", otel.Attr{"service", name}, otel.Attr{"version", version})
 				services.SetLastStatus(name, version)
 			}
 		}
@@ -344,7 +344,7 @@ func (t *Tray) startAllServices() {
 		if status.Status == services.StatusNotInstalled || status.Status == services.StatusRunning {
 			continue
 		}
-		otel.Info(context.Background(), "starting", map[string]any{"service": sm.name})
+		otel.Info(context.Background(), "starting", otel.Attr{"service", sm.name})
 		services.Start(sm.name)
 	}
 	t.updateMenus()
@@ -371,7 +371,7 @@ func (t *Tray) updateAllServices() {
 
 	svcs, err := registry.ListServices()
 	if err != nil {
-		otel.Error(context.Background(), "failed to list services", map[string]any{"error": err.Error()})
+		otel.Error(context.Background(), "failed to list services", otel.Attr{"error", err.Error()})
 		return
 	}
 
@@ -382,27 +382,23 @@ func (t *Tray) updateAllServices() {
 			continue
 		}
 
-		otel.Info(context.Background(), "checking", map[string]any{"service": svc.Name})
+		otel.Info(context.Background(), "checking", otel.Attr{"service", svc.Name})
 		services.SetLastStatus(svc.Name, "Checking for updates...")
 
 		err := services.Update(svc.Name, func(msg string) {
-			otel.Info(context.Background(), msg, map[string]any{"service": svc.Name})
+			otel.Info(context.Background(), msg, otel.Attr{"service", svc.Name})
 			services.SetLastStatus(svc.Name, msg)
 		})
 
 		if err != nil {
-			otel.Error(context.Background(), "update failed", map[string]any{"service": svc.Name, "error": err.Error()})
+			otel.Error(context.Background(), "update failed", otel.Attr{"service", svc.Name}, otel.Attr{"error", err.Error()})
 			failed++
 		} else {
 			updated++
 		}
 	}
 
-	otel.Info(context.Background(), "update all complete", map[string]any{
-		"updated": updated,
-		"failed":  failed,
-		"skipped": skipped,
-	})
+	otel.Info(context.Background(), "update all complete", otel.Attr{"updated", updated}, otel.Attr{"failed", failed}, otel.Attr{"skipped", skipped})
 }
 
 func (t *Tray) updateOrchestrator() {
@@ -410,7 +406,7 @@ func (t *Tray) updateOrchestrator() {
 
 	hasUpdate, _, latest, err := services.CheckOrchestratorUpdate()
 	if err != nil {
-		otel.Error(context.Background(), "failed to check for updates", map[string]any{"error": err.Error()})
+		otel.Error(context.Background(), "failed to check for updates", otel.Attr{"error", err.Error()})
 		return
 	}
 
@@ -419,12 +415,12 @@ func (t *Tray) updateOrchestrator() {
 		return
 	}
 
-	otel.Info(context.Background(), "updating orchestrator", map[string]any{"version": latest})
+	otel.Info(context.Background(), "updating orchestrator", otel.Attr{"version", latest})
 
 	if err := services.SelfUpdate(latest, func(msg string) {
 		otel.Info(context.Background(), msg)
 	}); err != nil {
-		otel.Error(context.Background(), "self-update failed", map[string]any{"error": err.Error()})
+		otel.Error(context.Background(), "self-update failed", otel.Attr{"error", err.Error()})
 		return
 	}
 

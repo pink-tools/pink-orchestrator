@@ -101,11 +101,7 @@ func Install(name string, progress func(string)) error {
 
 	// Verify binary works before saving version
 	if err := verifyBinary(binaryPath); err != nil {
-		otel.Error(context.Background(), "binary verification failed", map[string]any{
-			"service": name,
-			"binary":  binaryPath,
-			"error":   err.Error(),
-		})
+		otel.Error(context.Background(), "binary verification failed", otel.Attr{"service", name}, otel.Attr{"binary", binaryPath}, otel.Attr{"error", err.Error()})
 		return fmt.Errorf("binary verification failed: %w", err)
 	}
 
