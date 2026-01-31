@@ -27,10 +27,10 @@ github.com/lxn/walk v0.0.0-20210112085537-c389da54e794/go.mod h1:E23UucZGqpuUANJ
 github.com/lxn/win v0.0.0-20210218163916-a377121e959e/go.mod h1:KxxjdtRkfNoYDCUP5ryK7XJJNTnpC8atvtmTheChOtk=
 github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c h1:rp5dCmg/yLR3mgFuSOe4oEnDDmGLROTvMragMUXpTQw=
 github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c/go.mod h1:X07ZCGwUbLaax7L0S3Tw4hpejzu63ZrrQiUe6W0hcy0=
-github.com/pink-tools/pink-core v1.7.0 h1:fE0DE+qD0wiBUqczTk2QG7DBeZZAGp/d4cWQFJemV1Y=
-github.com/pink-tools/pink-core v1.7.0/go.mod h1:ZLcgyB0Ep5EgceOq4Z8B5q9nyHyrZs+VoZWk27NCDwc=
-github.com/pink-tools/pink-otel v1.6.0 h1:l2X0NKP3ybpqmwOfg429nLgAoKCnTOEhrOwVMtVPD58=
-github.com/pink-tools/pink-otel v1.6.0/go.mod h1:+bdZ9DS90ONsjis1aCMobE2KcIQbJ1szFN1ZBdAVsJs=
+github.com/pink-tools/pink-core v1.7.1 h1:PEoL8c1hdH4bg1EaBrwQiX5xorQrAljvq1Nar53+Whk=
+github.com/pink-tools/pink-core v1.7.1/go.mod h1:/m0/6dltV1iEJpAA+CYq5YC+1eJpbR+zJhd4OWHZSl4=
+github.com/pink-tools/pink-otel v1.7.0 h1:gWfm5SJU04lkLzEQ7EB4avI2RzwMXLLlS9wJpLfBIzo=
+github.com/pink-tools/pink-otel v1.7.0/go.mod h1:+bdZ9DS90ONsjis1aCMobE2KcIQbJ1szFN1ZBdAVsJs=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966/go.mod h1:sUM3LWHvSMaG192sy56D9F7CNvL7jUJVXoqM1QKLnog=
