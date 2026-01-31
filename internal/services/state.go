@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -17,13 +18,12 @@ import (
 )
 
 type State struct {
-	RunningServices []string          `json:"running_services"`
-	Installed       map[string]string `json:"installed"`
+	RunningServices []string `json:"running_services"`
 }
 
 var (
 	stateMu     sync.Mutex
-	state       = &State{Installed: make(map[string]string)}
+	state       = &State{}
 	stateLoaded bool
 )
 
@@ -38,9 +38,6 @@ func loadState() {
 	}
 	if err := json.Unmarshal(data, state); err != nil {
 		otel.Warn(context.Background(), "failed to parse state file", otel.Attr{"error", err.Error()})
-	}
-	if state.Installed == nil {
-		state.Installed = make(map[string]string)
 	}
 	stateLoaded = true
 }
@@ -128,11 +125,26 @@ func GetLatestVersion(repo string) (string, error) {
 }
 
 func GetInstalledVersion(name string) string {
-	stateMu.Lock()
-	loadState()
-	v := state.Installed[name]
-	stateMu.Unlock()
-	return v
+	binary := config.ServiceBinary(name)
+	if _, err := os.Stat(binary); err != nil {
+		return ""
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, binary, "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	// Parse "pink-xxx v1.2.3" → "v1.2.3"
+	parts := strings.Fields(strings.TrimSpace(string(output)))
+	if len(parts) >= 2 {
+		return parts[1]
+	}
+	return ""
 }
 
 // isNewer returns true if latest version is newer than installed
@@ -173,14 +185,6 @@ func isNewer(latest, installed string) bool {
 	}
 
 	return semver.Compare(latestV, installedV) > 0
-}
-
-func SetInstalledVersion(name, version string) {
-	stateMu.Lock()
-	loadState()
-	state.Installed[name] = version
-	stateMu.Unlock()
-	SaveState()
 }
 
 func CheckUpdate(name string) (hasUpdate bool, installed, latest string, err error) {

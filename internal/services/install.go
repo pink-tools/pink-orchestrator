@@ -105,10 +105,9 @@ func Install(name string, progress func(string)) error {
 		return fmt.Errorf("binary verification failed: %w", err)
 	}
 
-	// Save version AFTER verification
-	if version, err := GetLatestVersion(svc.Repo); err == nil {
-		SetInstalledVersion(name, version)
-		progress(fmt.Sprintf("%s installed (release: %s)", name, version))
+	// Get version from binary for progress message
+	if version := GetInstalledVersion(name); version != "" {
+		progress(fmt.Sprintf("%s installed (%s)", name, version))
 	} else {
 		progress(fmt.Sprintf("%s installed", name))
 	}
