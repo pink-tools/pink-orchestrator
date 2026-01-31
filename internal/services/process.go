@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-otel"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
@@ -60,7 +61,7 @@ func Start(name string) error {
 	} else {
 		cmd = exec.Command(binary)
 	}
-	cmd.Dir = config.ServiceDir(name)
+	cmd.Dir = core.ServiceDir(name)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

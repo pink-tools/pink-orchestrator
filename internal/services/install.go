@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-otel"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
@@ -57,7 +58,7 @@ func Install(name string, progress func(string)) error {
 
 	progress(fmt.Sprintf("Downloading %s...", name))
 
-	if err := os.MkdirAll(config.ServiceDir(name), 0755); err != nil {
+	if err := os.MkdirAll(core.ServiceDir(name), 0755); err != nil {
 		return fmt.Errorf("failed to create service directory: %w", err)
 	}
 
@@ -74,7 +75,7 @@ func Install(name string, progress func(string)) error {
 
 	for _, asset := range svc.ExtraAssets {
 		progress(fmt.Sprintf("Downloading %s...", asset.Path))
-		assetPath := filepath.Join(config.ServiceDir(name), asset.Path)
+		assetPath := filepath.Join(core.ServiceDir(name), asset.Path)
 		if err := downloadFile(asset.URL, assetPath, progress); err != nil {
 			return fmt.Errorf("failed to download asset %s: %w", asset.Path, err)
 		}
@@ -418,7 +419,7 @@ func installClaudeMd(svc *registry.Service, progress func(string)) {
 }
 
 func installClaudeRoot(svc *registry.Service, progress func(string)) {
-	claudeDir := config.ClaudeDir()
+	claudeDir := config.AgentClaudeDir()
 	if err := os.MkdirAll(claudeDir, 0755); err != nil {
 		return
 	}
@@ -439,12 +440,12 @@ func installClaudeRoot(svc *registry.Service, progress func(string)) {
 }
 
 func installOrchestratorDocs(progress func(string)) {
-	claudeDir := config.ClaudeServiceDir("pink-orchestrator")
+	claudeDir := config.AgentClaudeServiceDir("pink-orchestrator")
 	if err := os.MkdirAll(claudeDir, 0755); err != nil {
 		return
 	}
 
-	dest := config.ClaudeServiceMd("pink-orchestrator")
+	dest := config.AgentClaudeServiceMd("pink-orchestrator")
 	if _, err := os.Stat(dest); err == nil {
 		return
 	}
@@ -454,13 +455,13 @@ func installOrchestratorDocs(progress func(string)) {
 }
 
 func installClaudeService(svc *registry.Service, progress func(string)) {
-	claudeDir := config.ClaudeServiceDir(svc.Name)
+	claudeDir := config.AgentClaudeServiceDir(svc.Name)
 	if err := os.MkdirAll(claudeDir, 0755); err != nil {
 		return
 	}
 
 	claudeMdURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/main/.claude/CLAUDE.md", svc.Repo)
-	claudeMdPath := config.ClaudeServiceMd(svc.Name)
+	claudeMdPath := config.AgentClaudeServiceMd(svc.Name)
 
 	if err := downloadFile(claudeMdURL, claudeMdPath, progress); err != nil {
 		return
@@ -470,7 +471,7 @@ func installClaudeService(svc *registry.Service, progress func(string)) {
 }
 
 func updateProjectsMd(name string) {
-	projectsFile := config.ClaudeProjectsMd()
+	projectsFile := config.AgentClaudeProjectsMd()
 	refLine := fmt.Sprintf("@pink-tools/%s/CLAUDE.md", name)
 
 	content, err := os.ReadFile(projectsFile)

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+
+	"github.com/pink-tools/pink-core"
 )
 
 const (
@@ -27,12 +29,8 @@ func HomeDir() string {
 	return home
 }
 
-func PinkToolsDir() string {
-	return filepath.Join(HomeDir(), "pink-tools")
-}
-
 func OrchestratorDir() string {
-	return filepath.Join(HomeDir(), ".pink-orchestrator")
+	return filepath.Join(core.BaseDir(), ".pink-orchestrator")
 }
 
 func StateFile() string {
@@ -43,24 +41,20 @@ func RegistryCacheFile() string {
 	return filepath.Join(OrchestratorDir(), "registry.yaml")
 }
 
-func ServiceDir(name string) string {
-	return filepath.Join(PinkToolsDir(), name)
-}
-
 func ServiceBinary(name string) string {
 	bin := name
 	if runtime.GOOS == "windows" {
 		bin += ".exe"
 	}
-	return filepath.Join(ServiceDir(name), bin)
+	return filepath.Join(core.ServiceDir(name), bin)
 }
 
 func ServiceEnvFile(name string) string {
-	return filepath.Join(ServiceDir(name), ".env")
+	return filepath.Join(core.ServiceDir(name), ".env")
 }
 
 func ServicePidFile(name string) string {
-	return filepath.Join(ServiceDir(name), name+".pid")
+	return filepath.Join(core.ServiceDir(name), name+".pid")
 }
 
 func Platform() string {
@@ -80,7 +74,7 @@ func BinaryName(service string) string {
 func EnsureDirs() error {
 	dirs := []string{
 		OrchestratorDir(),
-		PinkToolsDir(),
+		core.PinkToolsDir(),
 	}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -89,6 +83,33 @@ func EnsureDirs() error {
 	}
 	return nil
 }
+
+// AgentClaudeDir returns agent's .claude directory (/Users/.claude).
+func AgentClaudeDir() string {
+	return filepath.Join(core.BaseDir(), ".claude")
+}
+
+// AgentClaudePinkToolsDir returns agent's pink-tools directory.
+func AgentClaudePinkToolsDir() string {
+	return filepath.Join(AgentClaudeDir(), "pink-tools")
+}
+
+// AgentClaudeServiceDir returns agent's service directory.
+func AgentClaudeServiceDir(name string) string {
+	return filepath.Join(AgentClaudePinkToolsDir(), name)
+}
+
+// AgentClaudeServiceMd returns path to service CLAUDE.md.
+func AgentClaudeServiceMd(name string) string {
+	return filepath.Join(AgentClaudeServiceDir(name), "CLAUDE.md")
+}
+
+// AgentClaudeProjectsMd returns path to agent's PROJECTS.md.
+func AgentClaudeProjectsMd() string {
+	return filepath.Join(AgentClaudeDir(), "PROJECTS.md")
+}
+
+// User-level claude paths (kept for backwards compatibility)
 
 func ClaudeDir() string {
 	return filepath.Join(HomeDir(), ".claude")

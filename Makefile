@@ -1,5 +1,5 @@
 VERSION := dev-$(shell date +%Y-%m-%d_%H:%M:%S)
-INSTALL_DIR := ~/pink-tools/pink-orchestrator
+INSTALL_DIR := /Users/pink-tools/pink-orchestrator
 
 build:
 	go build -ldflags="-X main.version=$(VERSION)" -o pink-orchestrator .

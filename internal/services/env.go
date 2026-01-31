@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 )
@@ -36,7 +37,7 @@ func loadServiceEnv(name string) []string {
 }
 
 func appendPinkToolsToPath(env []string) []string {
-	pinkToolsDir := config.PinkToolsDir()
+	pinkToolsDir := core.PinkToolsDir()
 	entries, err := os.ReadDir(pinkToolsDir)
 	if err != nil {
 		return env

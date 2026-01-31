@@ -42,8 +42,8 @@ Right-click tray icon to:
 
 | Item | Path |
 |------|------|
-| Services | `~/pink-tools/{service}/` |
-| State | `~/.pink-orchestrator/` |
+| Services | `/Users/pink-tools/{service}/` |
+| State | `/Users/.pink-orchestrator/` |
 
 ## Build from Source
 

@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pink-tools/pink-orchestrator/internal/config"
+	"github.com/pink-tools/pink-core"
 )
 
 // sendIPCStop sends STOP command via IPC to gracefully shutdown a service
 // Returns true if the service acknowledged the stop command
 func sendIPCStop(name string) bool {
-	portFile := filepath.Join(config.ServiceDir(name), name+".port")
+	portFile := filepath.Join(core.ServiceDir(name), name+".port")
 
 	data, err := os.ReadFile(portFile)
 	if err != nil {
@@ -48,7 +48,7 @@ func sendIPCStop(name string) bool {
 
 // isIPCRunning checks if service is running via IPC ping
 func isIPCRunning(name string) bool {
-	portFile := filepath.Join(config.ServiceDir(name), name+".port")
+	portFile := filepath.Join(core.ServiceDir(name), name+".port")
 
 	data, err := os.ReadFile(portFile)
 	if err != nil {
