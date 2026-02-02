@@ -12,7 +12,6 @@ services:
   - name: pink-whisper
     repo: pink-tools/pink-whisper
     type: daemon
-    release_tag: go-cli-latest
     post_install: true
 
   - name: pink-voice
