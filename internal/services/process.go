@@ -34,6 +34,10 @@ func Start(name string) error {
 	}
 
 	for _, dep := range svc.Dependencies {
+		// Only start daemon dependencies, CLI dependencies just need to be installed
+		if !registry.IsDaemon(dep) {
+			continue
+		}
 		depStatus := GetStatus(dep)
 		if depStatus.Status != StatusRunning {
 			otel.Info(context.Background(), dep, otel.Attr{"status", "starting dependency"})
