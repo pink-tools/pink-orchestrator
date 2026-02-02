@@ -75,6 +75,12 @@ func Load() (*Registry, error) {
 		return cached, nil
 	}
 
+	// Try remote first
+	if reg, err := refreshLocked(); err == nil {
+		return reg, nil
+	}
+
+	// Fallback to cache
 	cacheFile := config.RegistryCacheFile()
 	if data, err := os.ReadFile(cacheFile); err == nil {
 		var reg Registry
@@ -84,6 +90,7 @@ func Load() (*Registry, error) {
 		}
 	}
 
+	// Fallback to bundled
 	if exe, err := os.Executable(); err == nil {
 		bundled := filepath.Join(filepath.Dir(exe), "registry.yaml")
 		if data, err := os.ReadFile(bundled); err == nil {
@@ -95,7 +102,7 @@ func Load() (*Registry, error) {
 		}
 	}
 
-	return refreshLocked()
+	return nil, fmt.Errorf("failed to load registry")
 }
 
 func Refresh() (*Registry, error) {
