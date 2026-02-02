@@ -65,7 +65,12 @@ func Install(name string, progress func(string)) error {
 
 	tag := svc.ReleaseTag
 	if tag == "" {
-		tag = "latest"
+		// Get actual latest release tag from GitHub API
+		latestTag, err := GetLatestReleaseTag(svc.Repo)
+		if err != nil {
+			return fmt.Errorf("failed to get latest release: %w", err)
+		}
+		tag = latestTag
 	}
 	releaseURL := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", svc.Repo, tag, config.BinaryName(name))
 	binaryPath := config.ServiceBinary(name)

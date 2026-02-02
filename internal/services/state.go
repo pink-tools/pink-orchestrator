@@ -95,33 +95,50 @@ func RestoreState() {
 }
 
 type GitHubRelease struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	TagName string `json:"tag_name"`
 }
 
-func GetLatestVersion(repo string) (string, error) {
+func getLatestRelease(repo string) (*GitHubRelease, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("GitHub API error: %d", resp.StatusCode)
+		return nil, fmt.Errorf("GitHub API error: %d", resp.StatusCode)
 	}
 
 	var release GitHubRelease
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, err
+	}
+	return &release, nil
+}
+
+func GetLatestVersion(repo string) (string, error) {
+	release, err := getLatestRelease(repo)
+	if err != nil {
 		return "", err
 	}
 
-	// Name format: "pink-xxx YYYYMMDD.HHMM" - extract version
+	// Name format: "pink-xxx vX.Y.Z" - extract version
 	parts := strings.Split(release.Name, " ")
 	if len(parts) >= 2 {
 		return parts[len(parts)-1], nil
 	}
 	return release.Name, nil
+}
+
+func GetLatestReleaseTag(repo string) (string, error) {
+	release, err := getLatestRelease(repo)
+	if err != nil {
+		return "", err
+	}
+	return release.TagName, nil
 }
 
 func GetInstalledVersion(name string) string {
