@@ -1,3 +1,5 @@
+//go:build darwin
+
 package dialog
 
 import (
@@ -6,14 +8,6 @@ import (
 
 	webview "github.com/webview/webview_go"
 )
-
-// Request represents a dialog request from a service
-type Request struct {
-	Title         string `json:"title"`
-	Message       string `json:"message"`
-	ConfirmButton string `json:"confirm_button"`
-	CancelButton  string `json:"cancel_button"`
-}
 
 // Show displays a WebView dialog and returns "confirm" or "cancel"
 func Show(req Request) string {
