@@ -2,16 +2,22 @@ package api
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
+	"github.com/pink-tools/pink-orchestrator/internal/dialog"
 	"github.com/pink-tools/pink-orchestrator/internal/services"
 )
 
 type Server struct {
 	listener net.Listener
+	portFile string
 }
 
 func NewServer() (*Server, error) {
@@ -20,7 +26,14 @@ func NewServer() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Server{listener: listener}, nil
+
+	// Write port file for pink-core IPC discovery
+	portDir := core.ServiceDir("pink-orchestrator")
+	os.MkdirAll(portDir, 0755)
+	portFile := filepath.Join(portDir, "pink-orchestrator.port")
+	os.WriteFile(portFile, []byte(fmt.Sprintf("%d", config.Port())), 0644)
+
+	return &Server{listener: listener, portFile: portFile}, nil
 }
 
 func (s *Server) Start() {
@@ -44,6 +57,13 @@ func (s *Server) handle(conn net.Conn) {
 	}
 
 	line = strings.TrimSpace(line)
+
+	// Handle pink-core IPC commands (no colon)
+	if line == "PING" {
+		conn.Write([]byte("PONG\n"))
+		return
+	}
+
 	parts := strings.SplitN(line, ":", 2)
 	if len(parts) < 2 {
 		conn.Write([]byte("error:invalid command format\n"))
@@ -53,6 +73,16 @@ func (s *Server) handle(conn net.Conn) {
 	cmd, arg := parts[0], parts[1]
 
 	switch cmd {
+	case "dialog":
+		// Show WebView dialog and return user choice
+		var req dialog.Request
+		if err := json.Unmarshal([]byte(arg), &req); err != nil {
+			conn.Write([]byte("error:invalid dialog json\n"))
+			return
+		}
+		result := dialog.Show(req)
+		conn.Write([]byte(result + "\n"))
+
 	case "update":
 		var msgs []string
 		err := services.Update(arg, func(msg string) {
@@ -95,4 +125,5 @@ func (s *Server) handle(conn net.Conn) {
 
 func (s *Server) Close() {
 	s.listener.Close()
+	os.Remove(s.portFile)
 }
