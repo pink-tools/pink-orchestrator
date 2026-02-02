@@ -24,6 +24,8 @@ type Service struct {
 	Name         string      `yaml:"name"`
 	Repo         string      `yaml:"repo"`
 	Type         string      `yaml:"type"`
+	ReleaseTag   string      `yaml:"release_tag,omitempty"`
+	PostInstall  bool        `yaml:"post_install,omitempty"`
 	Dependencies []string    `yaml:"dependencies,omitempty"`
 	SystemDeps   []SystemDep `yaml:"system_deps,omitempty"`
 	EnvVars      []EnvVar    `yaml:"env_vars,omitempty"`

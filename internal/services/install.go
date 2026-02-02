@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -62,7 +63,11 @@ func Install(name string, progress func(string)) error {
 		return fmt.Errorf("failed to create service directory: %w", err)
 	}
 
-	releaseURL := fmt.Sprintf("https://github.com/%s/releases/latest/download/%s", svc.Repo, config.BinaryName(name))
+	tag := svc.ReleaseTag
+	if tag == "" {
+		tag = "latest"
+	}
+	releaseURL := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", svc.Repo, tag, config.BinaryName(name))
 	binaryPath := config.ServiceBinary(name)
 
 	if err := downloadFile(releaseURL, binaryPath, progress); err != nil {
@@ -104,6 +109,15 @@ func Install(name string, progress func(string)) error {
 	if err := verifyBinary(binaryPath); err != nil {
 		otel.Error(context.Background(), "binary verification failed", otel.Attr{"service", name}, otel.Attr{"binary", binaryPath}, otel.Attr{"error", err.Error()})
 		return fmt.Errorf("binary verification failed: %w", err)
+	}
+
+	// Run post-install if configured
+	if svc.PostInstall {
+		progress(fmt.Sprintf("Running %s install...", name))
+		if err := runPostInstall(binaryPath, progress); err != nil {
+			otel.Warn(context.Background(), "post-install skipped", otel.Attr{"service", name}, otel.Attr{"error", err.Error()})
+			// Don't fail - service is installed, post-install is optional
+		}
 	}
 
 	// Get version from binary for progress message
@@ -468,6 +482,50 @@ func installClaudeService(svc *registry.Service, progress func(string)) {
 	}
 
 	updateProjectsMd(svc.Name)
+}
+
+func runPostInstall(binaryPath string, progress func(string)) error {
+	// Run install --check to see what's needed
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	checkCmd := exec.CommandContext(ctx, binaryPath, "install", "--check")
+	checkOutput, err := checkCmd.Output()
+	if err != nil {
+		return fmt.Errorf("install --check failed: %w", err)
+	}
+
+	// Parse JSON response
+	var info struct {
+		Ready       bool `json:"ready"`
+		NeedConfirm bool `json:"need_confirm"`
+	}
+	if err := json.Unmarshal(checkOutput, &info); err != nil {
+		return fmt.Errorf("parse install check: %w", err)
+	}
+
+	if info.Ready {
+		progress("Already installed")
+		return nil
+	}
+
+	// If needs confirmation (CPU), skip installation (use remote server instead)
+	// TODO: Show dialog when WebView is available
+	if info.NeedConfirm {
+		progress("Skipped (use remote server)")
+		return nil
+	}
+
+	// Run install --yes
+	progress("Installing dependencies...")
+	installCmd := exec.CommandContext(context.Background(), binaryPath, "install", "--yes")
+	installCmd.Stdout = os.Stdout
+	installCmd.Stderr = os.Stderr
+	if err := installCmd.Run(); err != nil {
+		return fmt.Errorf("install failed: %w", err)
+	}
+
+	return nil
 }
 
 func updateProjectsMd(name string) {

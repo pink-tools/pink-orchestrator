@@ -2,12 +2,18 @@ version: 1
 services:
   - name: pink-transcriber
     repo: pink-tools/pink-transcriber
-    type: daemon
+    type: cli
     system_deps:
       - name: ffmpeg
         brew: ffmpeg
         apt: ffmpeg
         winget: Gyan.FFmpeg
+
+  - name: pink-whisper
+    repo: pink-tools/pink-whisper
+    type: daemon
+    release_tag: go-cli-latest
+    post_install: true
 
   - name: pink-voice
     repo: pink-tools/pink-voice
