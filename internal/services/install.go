@@ -171,17 +171,26 @@ func Update(name string, progress func(string)) error {
 
 	// Rename-first strategy: rename old binary before installing new
 	// This works reliably on Windows even without sleep
+	var oldPath string
 	if IsInstalled(name) {
-		oldPath := binaryPath + ".old"
+		oldPath = binaryPath + ".old"
 		os.Remove(oldPath) // cleanup from previous update
 		if err := os.Rename(binaryPath, oldPath); err != nil {
 			return fmt.Errorf("failed to move old binary (still locked?): %w", err)
 		}
-		defer os.Remove(oldPath) // cleanup after success
 	}
 
 	if err := Install(name, progress); err != nil {
+		// Restore old binary on failure
+		if oldPath != "" {
+			os.Rename(oldPath, binaryPath)
+		}
 		return err
+	}
+
+	// Cleanup old binary only on success
+	if oldPath != "" {
+		os.Remove(oldPath)
 	}
 
 	progress(fmt.Sprintf("Updated: %s → %s", oldVersion, latest))
