@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFB0D9"/>
+      <stop offset="100%" stop-color="#E854A0"/>
+    </linearGradient>
+    <linearGradient id="ng" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF9ED4"/>
+      <stop offset="100%" stop-color="#FF69B4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Connection lines from hub to nodes -->
+  <line x1="128" y1="128" x2="128" y2="32" stroke="#FF69B4" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+  <line x1="128" y1="128" x2="45" y2="80" stroke="#FF69B4" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+  <line x1="128" y1="128" x2="45" y2="176" stroke="#FF69B4" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+  <line x1="128" y1="128" x2="128" y2="224" stroke="#FF69B4" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+  <line x1="128" y1="128" x2="211" y2="176" stroke="#FF69B4" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+  <line x1="128" y1="128" x2="211" y2="80" stroke="#FF69B4" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Central hexagon hub -->
+  <polygon points="128,88 163,108 163,148 128,168 93,148 93,108" fill="url(#pg)"/>
+
+  <!-- Inner hexagon cutout detail -->
+  <polygon points="128,102 148,114 148,142 128,154 108,142 108,114" fill="none" stroke="white" stroke-width="2.5" opacity="0.35"/>
+
+  <!-- Center dot -->
+  <circle cx="128" cy="128" r="8" fill="white" opacity="0.5"/>
+
+  <!-- Service nodes - hexagons at each spoke -->
+  <polygon points="128,16 144,24 144,40 128,48 112,40 112,24" fill="url(#ng)"/>
+  <polygon points="45,64 61,72 61,88 45,96 29,88 29,72" fill="url(#ng)"/>
+  <polygon points="45,160 61,168 61,184 45,192 29,184 29,168" fill="url(#ng)"/>
+  <polygon points="128,208 144,216 144,232 128,240 112,232 112,216" fill="url(#ng)"/>
+  <polygon points="211,160 227,168 227,184 211,192 195,184 195,168" fill="url(#ng)"/>
+  <polygon points="211,64 227,72 227,88 211,96 195,88 195,72" fill="url(#ng)"/>
+</svg>
