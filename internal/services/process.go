@@ -150,7 +150,7 @@ func captureOutput(name string, r io.Reader, isStderr bool) {
 		line := scanner.Text()
 		if line != "" {
 			otel.PrintServiceLog(line)
-			updateServiceLog(name, line, isStderr)
+			updateServiceLog(name, otel.ParseLogMessage(line), isStderr)
 		}
 	}
 }
