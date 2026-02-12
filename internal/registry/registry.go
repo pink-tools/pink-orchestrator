@@ -134,7 +134,7 @@ func refreshLocked() (*Registry, error) {
 	}
 
 	if err := os.WriteFile(config.RegistryCacheFile(), data, 0644); err != nil {
-		log.Warn(context.Background(), "failed to cache registry", log.Attr{"error", err.Error()})
+		log.Warn(context.Background(), "failed to cache registry", log.Attr{K: "error", V: err.Error()})
 	}
 
 	cached = &reg

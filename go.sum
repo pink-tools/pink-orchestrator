@@ -29,6 +29,8 @@ github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c h1:rp5dCmg/yLR3mgF
 github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c/go.mod h1:X07ZCGwUbLaax7L0S3Tw4hpejzu63ZrrQiUe6W0hcy0=
 github.com/pink-tools/pink-core v1.8.1 h1:cx/TRawF47D9tBk4fsNAEXDgQH0WwIbekBuWL0kJTBs=
 github.com/pink-tools/pink-core v1.8.1/go.mod h1:m8DDgmEXj/3W/l66ZaL6gJ/LkbPZbI6aOK6iKQPSCz8=
+github.com/pink-tools/pink-core v1.8.2 h1:D0RdCb86a2gUYUqSgRM0Js1SaKAmGeyOwaest1YCzAc=
+github.com/pink-tools/pink-core v1.8.2/go.mod h1:m8DDgmEXj/3W/l66ZaL6gJ/LkbPZbI6aOK6iKQPSCz8=
 github.com/pink-tools/pink-otel v1.8.0 h1:c17r+AYVqUqz/ncCzfhnkK/buikKtGgFu56pPkdIRoA=
 github.com/pink-tools/pink-otel v1.8.0/go.mod h1:+bdZ9DS90ONsjis1aCMobE2KcIQbJ1szFN1ZBdAVsJs=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

@@ -80,7 +80,7 @@ func main() {
 	log.SetServiceNameWidth(registry.MaxServiceNameLen())
 
 	if err := config.EnsureDirs(); err != nil {
-		log.Error(context.Background(), "failed to create directories", log.Attr{"error", err.Error()})
+		log.Error(context.Background(), "failed to create directories", log.Attr{K: "error", V: err.Error()})
 		os.Exit(1)
 	}
 
@@ -92,11 +92,11 @@ func main() {
 
 	services.SetOrchestratorBinaryVersion(version)
 
-	log.Info(context.Background(), "started "+version, log.Attr{"port", config.Port()})
+	log.Info(context.Background(), "started "+version, log.Attr{K: "port", V: config.Port()})
 
 	apiServer, err := api.NewServer()
 	if err != nil {
-		log.Error(context.Background(), "api server failed", log.Attr{"error", err.Error()})
+		log.Error(context.Background(), "api server failed", log.Attr{K: "error", V: err.Error()})
 		os.Exit(1)
 	}
 	go apiServer.Start()

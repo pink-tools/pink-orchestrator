@@ -256,9 +256,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	go func() {
 		for range sm.mUpdate.ClickedCh {
 			go func() {
-				log.Info(context.Background(), "updating", log.Attr{"service", name})
+				log.Info(context.Background(), "updating", log.Attr{K: "service", V: name})
 				services.Update(name, func(msg string) {
-					log.Info(context.Background(), msg, log.Attr{"service", name})
+					log.Info(context.Background(), msg, log.Attr{K: "service", V: name})
 					services.SetLastStatus(name, msg)
 				})
 			}()
@@ -268,9 +268,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	go func() {
 		for range sm.mInstall.ClickedCh {
 			go func() {
-				log.Info(context.Background(), "installing", log.Attr{"service", name})
+				log.Info(context.Background(), "installing", log.Attr{K: "service", V: name})
 				services.Install(name, func(msg string) {
-					log.Info(context.Background(), msg, log.Attr{"service", name})
+					log.Info(context.Background(), msg, log.Attr{K: "service", V: name})
 					services.SetLastStatus(name, msg)
 				})
 			}()
@@ -308,9 +308,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 		for range sm.mCheck.ClickedCh {
 			version, err := services.Check(name)
 			if err != nil {
-				log.Warn(context.Background(), "check failed", log.Attr{"service", name}, log.Attr{"error", err.Error()})
+				log.Warn(context.Background(), "check failed", log.Attr{K: "service", V: name}, log.Attr{K: "error", V: err.Error()})
 			} else {
-				log.Info(context.Background(), "version", log.Attr{"service", name}, log.Attr{"version", version})
+				log.Info(context.Background(), "version", log.Attr{K: "service", V: name}, log.Attr{K: "version", V: version})
 				services.SetLastStatus(name, version)
 			}
 		}
@@ -344,7 +344,7 @@ func (t *Tray) startAllServices() {
 		if status.Status == services.StatusNotInstalled || status.Status == services.StatusRunning {
 			continue
 		}
-		log.Info(context.Background(), "starting", log.Attr{"service", sm.name})
+		log.Info(context.Background(), "starting", log.Attr{K: "service", V: sm.name})
 		services.Start(sm.name)
 	}
 	t.updateMenus()
@@ -371,7 +371,7 @@ func (t *Tray) updateAllServices() {
 
 	svcs, err := registry.ListServices()
 	if err != nil {
-		log.Error(context.Background(), "failed to list services", log.Attr{"error", err.Error()})
+		log.Error(context.Background(), "failed to list services", log.Attr{K: "error", V: err.Error()})
 		return
 	}
 
@@ -382,23 +382,23 @@ func (t *Tray) updateAllServices() {
 			continue
 		}
 
-		log.Info(context.Background(), "checking", log.Attr{"service", svc.Name})
+		log.Info(context.Background(), "checking", log.Attr{K: "service", V: svc.Name})
 		services.SetLastStatus(svc.Name, "Checking for updates...")
 
 		err := services.Update(svc.Name, func(msg string) {
-			log.Info(context.Background(), msg, log.Attr{"service", svc.Name})
+			log.Info(context.Background(), msg, log.Attr{K: "service", V: svc.Name})
 			services.SetLastStatus(svc.Name, msg)
 		})
 
 		if err != nil {
-			log.Error(context.Background(), "update failed", log.Attr{"service", svc.Name}, log.Attr{"error", err.Error()})
+			log.Error(context.Background(), "update failed", log.Attr{K: "service", V: svc.Name}, log.Attr{K: "error", V: err.Error()})
 			failed++
 		} else {
 			updated++
 		}
 	}
 
-	log.Info(context.Background(), "update all complete", log.Attr{"updated", updated}, log.Attr{"failed", failed}, log.Attr{"skipped", skipped})
+	log.Info(context.Background(), "update all complete", log.Attr{K: "updated", V: updated}, log.Attr{K: "failed", V: failed}, log.Attr{K: "skipped", V: skipped})
 }
 
 func (t *Tray) updateOrchestrator() {
@@ -406,7 +406,7 @@ func (t *Tray) updateOrchestrator() {
 
 	hasUpdate, _, latest, err := services.CheckOrchestratorUpdate()
 	if err != nil {
-		log.Error(context.Background(), "failed to check for updates", log.Attr{"error", err.Error()})
+		log.Error(context.Background(), "failed to check for updates", log.Attr{K: "error", V: err.Error()})
 		return
 	}
 
@@ -415,12 +415,12 @@ func (t *Tray) updateOrchestrator() {
 		return
 	}
 
-	log.Info(context.Background(), "updating orchestrator", log.Attr{"version", latest})
+	log.Info(context.Background(), "updating orchestrator", log.Attr{K: "version", V: latest})
 
 	if err := services.SelfUpdate(latest, func(msg string) {
 		log.Info(context.Background(), msg)
 	}); err != nil {
-		log.Error(context.Background(), "self-update failed", log.Attr{"error", err.Error()})
+		log.Error(context.Background(), "self-update failed", log.Attr{K: "error", V: err.Error()})
 		return
 	}
 

@@ -24,7 +24,7 @@ func Start(name string) error {
 
 	status := GetStatus(name)
 	if status.Status == StatusRunning {
-		log.Info(context.Background(), name, log.Attr{"status", "already running"})
+		log.Info(context.Background(), name, log.Attr{K: "status", V: "already running"})
 		return nil
 	}
 
@@ -40,7 +40,7 @@ func Start(name string) error {
 		}
 		depStatus := GetStatus(dep)
 		if depStatus.Status != StatusRunning {
-			log.Info(context.Background(), dep, log.Attr{"status", "starting dependency"})
+			log.Info(context.Background(), dep, log.Attr{K: "status", V: "starting dependency"})
 			if err := Start(dep); err != nil {
 				return fmt.Errorf("failed to start dependency %s: %w", dep, err)
 			}
@@ -50,7 +50,7 @@ func Start(name string) error {
 	// Kill any existing process with same name (from previous session)
 	killExisting(name)
 
-	log.Info(context.Background(), name, log.Attr{"status", "starting"})
+	log.Info(context.Background(), name, log.Attr{K: "status", V: "starting"})
 	binary := config.ServiceBinary(name)
 
 	var cmd *exec.Cmd
@@ -101,9 +101,9 @@ func Start(name string) error {
 		mu.Unlock()
 		close(info.done)
 		if err != nil {
-			log.Warn(context.Background(), name, log.Attr{"status", "exited"}, log.Attr{"error", err.Error()})
+			log.Warn(context.Background(), name, log.Attr{K: "status", V: "exited"}, log.Attr{K: "error", V: err.Error()})
 		} else {
-			log.Info(context.Background(), name, log.Attr{"status", "exited"})
+			log.Info(context.Background(), name, log.Attr{K: "status", V: "exited"})
 		}
 	}()
 
@@ -119,7 +119,7 @@ func Stop(name string) error {
 		return nil
 	}
 
-	log.Info(context.Background(), name, log.Attr{"status", "stopping"})
+	log.Info(context.Background(), name, log.Attr{K: "status", V: "stopping"})
 
 	// IPC shutdown - no fallback, if it fails something is wrong
 	if !sendIPCStop(name) {
@@ -137,7 +137,7 @@ func Stop(name string) error {
 }
 
 func Restart(name string) error {
-	log.Info(context.Background(), name, log.Attr{"status", "restarting"})
+	log.Info(context.Background(), name, log.Attr{K: "status", V: "restarting"})
 	if err := Stop(name); err != nil {
 		return err
 	}

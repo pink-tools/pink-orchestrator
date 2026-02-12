@@ -112,7 +112,7 @@ func Install(name string, progress func(string)) error {
 
 	// Verify binary works before saving version
 	if err := verifyBinary(binaryPath); err != nil {
-		log.Error(context.Background(), "binary verification failed", log.Attr{"service", name}, log.Attr{"binary", binaryPath}, log.Attr{"error", err.Error()})
+		log.Error(context.Background(), "binary verification failed", log.Attr{K: "service", V: name}, log.Attr{K: "binary", V: binaryPath}, log.Attr{K: "error", V: err.Error()})
 		return fmt.Errorf("binary verification failed: %w", err)
 	}
 
@@ -120,7 +120,7 @@ func Install(name string, progress func(string)) error {
 	if svc.PostInstall {
 		progress(fmt.Sprintf("Running %s install...", name))
 		if err := runPostInstall(binaryPath, progress); err != nil {
-			log.Warn(context.Background(), "post-install skipped", log.Attr{"service", name}, log.Attr{"error", err.Error()})
+			log.Warn(context.Background(), "post-install skipped", log.Attr{K: "service", V: name}, log.Attr{K: "error", V: err.Error()})
 			// Don't fail - service is installed, post-install is optional
 		}
 	}

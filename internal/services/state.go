@@ -37,7 +37,7 @@ func loadState() {
 		return
 	}
 	if err := json.Unmarshal(data, state); err != nil {
-		log.Warn(context.Background(), "failed to parse state file", log.Attr{"error", err.Error()})
+		log.Warn(context.Background(), "failed to parse state file", log.Attr{K: "error", V: err.Error()})
 	}
 	stateLoaded = true
 }
@@ -89,7 +89,7 @@ func RestoreState() {
 
 	for _, name := range toStart {
 		if err := Start(name); err != nil {
-			log.Warn(context.Background(), "failed to restore service", log.Attr{"service", name}, log.Attr{"error", err.Error()})
+			log.Warn(context.Background(), "failed to restore service", log.Attr{K: "service", V: name}, log.Attr{K: "error", V: err.Error()})
 		}
 	}
 }
