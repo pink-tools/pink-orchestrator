@@ -4,8 +4,7 @@ go 1.25.4
 
 require (
 	github.com/getlantern/systray v1.2.2
-	github.com/pink-tools/pink-core v1.8.0
-	github.com/pink-tools/pink-otel v1.8.0
+	github.com/pink-tools/pink-core v1.8.1
 	github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6
 	golang.org/x/mod v0.32.0
 	golang.org/x/sys v0.39.0
@@ -24,6 +23,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
+	github.com/pink-tools/pink-otel v1.8.0 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect

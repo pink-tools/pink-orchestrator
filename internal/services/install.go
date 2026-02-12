@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/pink-tools/pink-core"
-	"github.com/pink-tools/pink-otel"
+	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 )
@@ -112,7 +112,7 @@ func Install(name string, progress func(string)) error {
 
 	// Verify binary works before saving version
 	if err := verifyBinary(binaryPath); err != nil {
-		otel.Error(context.Background(), "binary verification failed", otel.Attr{"service", name}, otel.Attr{"binary", binaryPath}, otel.Attr{"error", err.Error()})
+		log.Error(context.Background(), "binary verification failed", log.Attr{"service", name}, log.Attr{"binary", binaryPath}, log.Attr{"error", err.Error()})
 		return fmt.Errorf("binary verification failed: %w", err)
 	}
 
@@ -120,7 +120,7 @@ func Install(name string, progress func(string)) error {
 	if svc.PostInstall {
 		progress(fmt.Sprintf("Running %s install...", name))
 		if err := runPostInstall(binaryPath, progress); err != nil {
-			otel.Warn(context.Background(), "post-install skipped", otel.Attr{"service", name}, otel.Attr{"error", err.Error()})
+			log.Warn(context.Background(), "post-install skipped", log.Attr{"service", name}, log.Attr{"error", err.Error()})
 			// Don't fail - service is installed, post-install is optional
 		}
 	}

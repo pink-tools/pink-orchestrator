@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pink-tools/pink-otel"
+	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"gopkg.in/yaml.v3"
 )
@@ -134,7 +134,7 @@ func refreshLocked() (*Registry, error) {
 	}
 
 	if err := os.WriteFile(config.RegistryCacheFile(), data, 0644); err != nil {
-		otel.Warn(context.Background(), "failed to cache registry", otel.Attr{"error", err.Error()})
+		log.Warn(context.Background(), "failed to cache registry", log.Attr{"error", err.Error()})
 	}
 
 	cached = &reg

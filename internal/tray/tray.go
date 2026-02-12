@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/getlantern/systray"
-	"github.com/pink-tools/pink-otel"
+	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 	"github.com/pink-tools/pink-orchestrator/internal/services"
 )
@@ -61,10 +61,10 @@ func (t *Tray) onReady() {
 }
 
 func (t *Tray) onExit() {
-	otel.Info(context.Background(), "shutting down")
+	log.Info(context.Background(), "shutting down")
 	services.SaveState()
 	services.Shutdown()
-	otel.Info(context.Background(), "stopped")
+	log.Info(context.Background(), "stopped")
 	os.Exit(0)
 }
 
@@ -256,9 +256,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	go func() {
 		for range sm.mUpdate.ClickedCh {
 			go func() {
-				otel.Info(context.Background(), "updating", otel.Attr{"service", name})
+				log.Info(context.Background(), "updating", log.Attr{"service", name})
 				services.Update(name, func(msg string) {
-					otel.Info(context.Background(), msg, otel.Attr{"service", name})
+					log.Info(context.Background(), msg, log.Attr{"service", name})
 					services.SetLastStatus(name, msg)
 				})
 			}()
@@ -268,9 +268,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	go func() {
 		for range sm.mInstall.ClickedCh {
 			go func() {
-				otel.Info(context.Background(), "installing", otel.Attr{"service", name})
+				log.Info(context.Background(), "installing", log.Attr{"service", name})
 				services.Install(name, func(msg string) {
-					otel.Info(context.Background(), msg, otel.Attr{"service", name})
+					log.Info(context.Background(), msg, log.Attr{"service", name})
 					services.SetLastStatus(name, msg)
 				})
 			}()
@@ -308,9 +308,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 		for range sm.mCheck.ClickedCh {
 			version, err := services.Check(name)
 			if err != nil {
-				otel.Warn(context.Background(), "check failed", otel.Attr{"service", name}, otel.Attr{"error", err.Error()})
+				log.Warn(context.Background(), "check failed", log.Attr{"service", name}, log.Attr{"error", err.Error()})
 			} else {
-				otel.Info(context.Background(), "version", otel.Attr{"service", name}, otel.Attr{"version", version})
+				log.Info(context.Background(), "version", log.Attr{"service", name}, log.Attr{"version", version})
 				services.SetLastStatus(name, version)
 			}
 		}
@@ -334,7 +334,7 @@ func truncate(s string, max int) string {
 }
 
 func (t *Tray) startAllServices() {
-	otel.Info(context.Background(), "starting all services")
+	log.Info(context.Background(), "starting all services")
 
 	for _, sm := range t.serviceMenus {
 		if !sm.isDaemon {
@@ -344,14 +344,14 @@ func (t *Tray) startAllServices() {
 		if status.Status == services.StatusNotInstalled || status.Status == services.StatusRunning {
 			continue
 		}
-		otel.Info(context.Background(), "starting", otel.Attr{"service", sm.name})
+		log.Info(context.Background(), "starting", log.Attr{"service", sm.name})
 		services.Start(sm.name)
 	}
 	t.updateMenus()
 }
 
 func (t *Tray) stopAllServices() {
-	otel.Info(context.Background(), "stopping all services")
+	log.Info(context.Background(), "stopping all services")
 
 	for _, sm := range t.serviceMenus {
 		if !sm.isDaemon {
@@ -367,11 +367,11 @@ func (t *Tray) stopAllServices() {
 }
 
 func (t *Tray) updateAllServices() {
-	otel.Info(context.Background(), "updating all services")
+	log.Info(context.Background(), "updating all services")
 
 	svcs, err := registry.ListServices()
 	if err != nil {
-		otel.Error(context.Background(), "failed to list services", otel.Attr{"error", err.Error()})
+		log.Error(context.Background(), "failed to list services", log.Attr{"error", err.Error()})
 		return
 	}
 
@@ -382,45 +382,45 @@ func (t *Tray) updateAllServices() {
 			continue
 		}
 
-		otel.Info(context.Background(), "checking", otel.Attr{"service", svc.Name})
+		log.Info(context.Background(), "checking", log.Attr{"service", svc.Name})
 		services.SetLastStatus(svc.Name, "Checking for updates...")
 
 		err := services.Update(svc.Name, func(msg string) {
-			otel.Info(context.Background(), msg, otel.Attr{"service", svc.Name})
+			log.Info(context.Background(), msg, log.Attr{"service", svc.Name})
 			services.SetLastStatus(svc.Name, msg)
 		})
 
 		if err != nil {
-			otel.Error(context.Background(), "update failed", otel.Attr{"service", svc.Name}, otel.Attr{"error", err.Error()})
+			log.Error(context.Background(), "update failed", log.Attr{"service", svc.Name}, log.Attr{"error", err.Error()})
 			failed++
 		} else {
 			updated++
 		}
 	}
 
-	otel.Info(context.Background(), "update all complete", otel.Attr{"updated", updated}, otel.Attr{"failed", failed}, otel.Attr{"skipped", skipped})
+	log.Info(context.Background(), "update all complete", log.Attr{"updated", updated}, log.Attr{"failed", failed}, log.Attr{"skipped", skipped})
 }
 
 func (t *Tray) updateOrchestrator() {
-	otel.Info(context.Background(), "checking for orchestrator updates")
+	log.Info(context.Background(), "checking for orchestrator updates")
 
 	hasUpdate, _, latest, err := services.CheckOrchestratorUpdate()
 	if err != nil {
-		otel.Error(context.Background(), "failed to check for updates", otel.Attr{"error", err.Error()})
+		log.Error(context.Background(), "failed to check for updates", log.Attr{"error", err.Error()})
 		return
 	}
 
 	if !hasUpdate {
-		otel.Info(context.Background(), "orchestrator is up to date")
+		log.Info(context.Background(), "orchestrator is up to date")
 		return
 	}
 
-	otel.Info(context.Background(), "updating orchestrator", otel.Attr{"version", latest})
+	log.Info(context.Background(), "updating orchestrator", log.Attr{"version", latest})
 
 	if err := services.SelfUpdate(latest, func(msg string) {
-		otel.Info(context.Background(), msg)
+		log.Info(context.Background(), msg)
 	}); err != nil {
-		otel.Error(context.Background(), "self-update failed", otel.Attr{"error", err.Error()})
+		log.Error(context.Background(), "self-update failed", log.Attr{"error", err.Error()})
 		return
 	}
 

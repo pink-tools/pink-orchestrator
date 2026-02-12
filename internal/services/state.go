@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pink-tools/pink-otel"
+	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 	"golang.org/x/mod/semver"
@@ -37,7 +37,7 @@ func loadState() {
 		return
 	}
 	if err := json.Unmarshal(data, state); err != nil {
-		otel.Warn(context.Background(), "failed to parse state file", otel.Attr{"error", err.Error()})
+		log.Warn(context.Background(), "failed to parse state file", log.Attr{"error", err.Error()})
 	}
 	stateLoaded = true
 }
@@ -89,7 +89,7 @@ func RestoreState() {
 
 	for _, name := range toStart {
 		if err := Start(name); err != nil {
-			otel.Warn(context.Background(), "failed to restore service", otel.Attr{"service", name}, otel.Attr{"error", err.Error()})
+			log.Warn(context.Background(), "failed to restore service", log.Attr{"service", name}, log.Attr{"error", err.Error()})
 		}
 	}
 }

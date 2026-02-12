@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/pink-tools/pink-otel"
+	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/api"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
@@ -76,11 +76,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	otel.Init("pink-orchestrator", version)
-	otel.SetServiceNameWidth(registry.MaxServiceNameLen())
+	log.Init("pink-orchestrator", version)
+	log.SetServiceNameWidth(registry.MaxServiceNameLen())
 
 	if err := config.EnsureDirs(); err != nil {
-		otel.Error(context.Background(), "failed to create directories", otel.Attr{"error", err.Error()})
+		log.Error(context.Background(), "failed to create directories", log.Attr{"error", err.Error()})
 		os.Exit(1)
 	}
 
@@ -92,11 +92,11 @@ func main() {
 
 	services.SetOrchestratorBinaryVersion(version)
 
-	otel.Info(context.Background(), "started "+version, otel.Attr{"port", config.Port()})
+	log.Info(context.Background(), "started "+version, log.Attr{"port", config.Port()})
 
 	apiServer, err := api.NewServer()
 	if err != nil {
-		otel.Error(context.Background(), "api server failed", otel.Attr{"error", err.Error()})
+		log.Error(context.Background(), "api server failed", log.Attr{"error", err.Error()})
 		os.Exit(1)
 	}
 	go apiServer.Start()
@@ -124,7 +124,7 @@ Environment:
 }
 
 func updateAllServices() {
-	otel.Init("pink-orchestrator", version)
+	log.Init("pink-orchestrator", version)
 
 	svcs, err := registry.ListServices()
 	if err != nil {
