@@ -123,6 +123,9 @@ func Install(name string, progress func(string)) error {
 		}
 	}
 
+	// Chown service directory to real user (orchestrator runs as root)
+	chownServiceDir(name)
+
 	// Get version from binary for progress message
 	if version := GetInstalledVersion(name); version != "" {
 		progress(fmt.Sprintf("%s installed (%s)", name, version))
@@ -131,6 +134,17 @@ func Install(name string, progress func(string)) error {
 	}
 
 	return nil
+}
+
+func chownServiceDir(name string) {
+	if os.Getuid() != 0 {
+		return
+	}
+	sudoUser := os.Getenv("SUDO_USER")
+	if sudoUser == "" {
+		return
+	}
+	exec.Command("chown", "-R", sudoUser+":staff", core.ServiceDir(name)).Run()
 }
 
 // verifyBinary runs --version to check binary is executable and not corrupted
