@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,7 +12,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-core/log"
@@ -106,8 +106,6 @@ func Install(name string, progress func(string)) error {
 		}
 	}
 
-	createSymlink(name, progress)
-
 	installClaudeMd(svc, progress)
 
 	// Verify binary works before saving version
@@ -137,10 +135,7 @@ func Install(name string, progress func(string)) error {
 
 // verifyBinary runs --version to check binary is executable and not corrupted
 func verifyBinary(path string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, path, "--version")
+	cmd := exec.Command(path, "--version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%w (output: %s)", err, string(output))
@@ -208,11 +203,6 @@ func Update(name string, progress func(string)) error {
 func Uninstall(name string) error {
 	if err := Stop(name); err != nil {
 		return fmt.Errorf("failed to stop service: %w", err)
-	}
-
-	if runtime.GOOS != "windows" {
-		linkPath := filepath.Join("/usr/local/bin", name)
-		os.Remove(linkPath)
 	}
 
 	return os.Remove(config.ServiceBinary(name))
@@ -339,20 +329,6 @@ func formatBytes(b int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
-func createSymlink(name string, progress func(string)) {
-	if runtime.GOOS == "windows" {
-		return
-	}
-
-	binary := config.ServiceBinary(name)
-	linkPath := filepath.Join("/usr/local/bin", name)
-
-	os.Remove(linkPath)
-	if err := os.Symlink(binary, linkPath); err != nil {
-		progress(fmt.Sprintf("Warning: failed to create symlink: %v", err))
-	}
-}
-
 func installSystemDeps(deps []registry.SystemDep, progress func(string)) error {
 	for _, dep := range deps {
 		if isCommandAvailable(dep.Name) {
@@ -365,9 +341,12 @@ func installSystemDeps(deps []registry.SystemDep, progress func(string)) error {
 		switch runtime.GOOS {
 		case "darwin":
 			if dep.UnixScript != "" {
-				cmd = exec.Command("bash", "-c", dep.UnixScript)
+				cmd = userCommand("bash", "-c", dep.UnixScript)
 			} else if dep.Brew != "" {
-				cmd = exec.Command("brew", "install", dep.Brew)
+				if !isCommandAvailable("brew") {
+					return fmt.Errorf("brew is not installed. Install from https://brew.sh")
+				}
+				cmd = userCommand("brew", "install", dep.Brew)
 			} else {
 				return fmt.Errorf("no install method for %s on darwin", dep.Name)
 			}
@@ -438,6 +417,17 @@ func isCommandAvailable(name string) bool {
 	return err == nil
 }
 
+// userCommand wraps exec.Command to drop privileges when running as root.
+// brew and unix_script must not run as root on macOS.
+func userCommand(name string, args ...string) *exec.Cmd {
+	if os.Getuid() == 0 {
+		if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
+			return exec.Command("sudo", append([]string{"-u", sudoUser, name}, args...)...)
+		}
+	}
+	return exec.Command(name, args...)
+}
+
 func installClaudeMd(svc *registry.Service, progress func(string)) {
 	if svc.ClaudeRoot {
 		installClaudeRoot(svc, progress)
@@ -500,10 +490,7 @@ func installClaudeService(svc *registry.Service, progress func(string)) {
 
 func runPostInstall(binaryPath string, progress func(string)) error {
 	// Run install --check to see what's needed
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	checkCmd := exec.CommandContext(ctx, binaryPath, "install", "--check")
+	checkCmd := exec.Command(binaryPath, "install", "--check")
 	checkOutput, err := checkCmd.Output()
 	if err != nil {
 		return fmt.Errorf("install --check failed: %w", err)
@@ -530,12 +517,26 @@ func runPostInstall(binaryPath string, progress func(string)) error {
 		return nil
 	}
 
-	// Run install --yes
+	// Run install --yes, pipe stdout to progress for tray visibility
 	progress("Installing dependencies...")
-	installCmd := exec.CommandContext(context.Background(), binaryPath, "install", "--yes")
-	installCmd.Stdout = os.Stdout
+	installCmd := exec.Command(binaryPath, "install", "--yes")
 	installCmd.Stderr = os.Stderr
-	if err := installCmd.Run(); err != nil {
+
+	stdout, err := installCmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("stdout pipe: %w", err)
+	}
+
+	if err := installCmd.Start(); err != nil {
+		return fmt.Errorf("install start: %w", err)
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		progress(scanner.Text())
+	}
+
+	if err := installCmd.Wait(); err != nil {
 		return fmt.Errorf("install failed: %w", err)
 	}
 

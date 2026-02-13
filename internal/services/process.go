@@ -121,12 +121,11 @@ func Stop(name string) error {
 
 	log.Info(context.Background(), name, log.Attr{K: "status", V: "stopping"})
 
-	// IPC shutdown - no fallback, if it fails something is wrong
 	if !sendIPCStop(name) {
-		return fmt.Errorf("IPC stop failed for %s", name)
+		log.Warn(context.Background(), name, log.Attr{K: "status", V: "IPC stop failed, killing process"})
+		info.process.Kill()
 	}
 
-	// Wait for process to exit (if it hangs, it's a bug)
 	<-info.done
 
 	mu.Lock()

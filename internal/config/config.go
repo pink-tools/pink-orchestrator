@@ -1,7 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -30,7 +32,7 @@ func HomeDir() string {
 }
 
 func OrchestratorDir() string {
-	return filepath.Join(core.BaseDir(), ".pink-orchestrator")
+	return filepath.Join(core.PinkToolsDir(), "pink-orchestrator")
 }
 
 func StateFile() string {
@@ -51,10 +53,6 @@ func ServiceBinary(name string) string {
 
 func ServiceEnvFile(name string) string {
 	return filepath.Join(core.ServiceDir(name), ".env")
-}
-
-func ServicePidFile(name string) string {
-	return filepath.Join(core.ServiceDir(name), name+".pid")
 }
 
 func Platform() string {
@@ -84,6 +82,46 @@ func EnsureDirs() error {
 	return nil
 }
 
+// ChownDirs recursively chowns pink-tools directories to the given user.
+// Called after EnsureDirs when running as root via sudo.
+func ChownDirs(username string) error {
+	if username == "" {
+		return nil
+	}
+	dirs := []string{core.PinkToolsDir()}
+	for _, dir := range dirs {
+		cmd := exec.Command("chown", "-R", username+":staff", dir)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("chown %s: %w", dir, err)
+		}
+	}
+	return nil
+}
+
+// MigrateStateDir moves state files from old /Users/.pink-orchestrator/ to new location.
+func MigrateStateDir() {
+	oldDir := filepath.Join(core.BaseDir(), ".pink-orchestrator")
+	newDir := OrchestratorDir()
+	if oldDir == newDir {
+		return
+	}
+	info, err := os.Stat(oldDir)
+	if err != nil || !info.IsDir() {
+		return
+	}
+	entries, err := os.ReadDir(oldDir)
+	if err != nil {
+		return
+	}
+	os.MkdirAll(newDir, 0755)
+	for _, e := range entries {
+		old := filepath.Join(oldDir, e.Name())
+		dst := filepath.Join(newDir, e.Name())
+		os.Rename(old, dst)
+	}
+	os.Remove(oldDir)
+}
+
 // AgentClaudeDir returns agent's .claude directory (/Users/.claude).
 func AgentClaudeDir() string {
 	return filepath.Join(core.BaseDir(), ".claude")
@@ -109,24 +147,3 @@ func AgentClaudeProjectsMd() string {
 	return filepath.Join(AgentClaudeDir(), "PROJECTS.md")
 }
 
-// User-level claude paths (kept for backwards compatibility)
-
-func ClaudeDir() string {
-	return filepath.Join(HomeDir(), ".claude")
-}
-
-func ClaudePinkToolsDir() string {
-	return filepath.Join(ClaudeDir(), "pink-tools")
-}
-
-func ClaudeServiceDir(name string) string {
-	return filepath.Join(ClaudePinkToolsDir(), name)
-}
-
-func ClaudeServiceMd(name string) string {
-	return filepath.Join(ClaudeServiceDir(name), "CLAUDE.md")
-}
-
-func ClaudeProjectsMd() string {
-	return filepath.Join(ClaudeDir(), "PROJECTS.md")
-}

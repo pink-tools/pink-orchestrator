@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pink-tools/pink-core"
 )
@@ -28,13 +27,12 @@ func sendIPCStop(name string) bool {
 		return false
 	}
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 2*time.Second)
+	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return false
 	}
 	defer conn.Close()
 
-	conn.SetDeadline(time.Now().Add(5 * time.Second))
 	conn.Write([]byte("STOP\n"))
 
 	reader := bufio.NewReader(conn)
@@ -60,13 +58,12 @@ func isIPCRunning(name string) bool {
 		return false
 	}
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
+	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return false
 	}
 	defer conn.Close()
 
-	conn.SetDeadline(time.Now().Add(2 * time.Second))
 	conn.Write([]byte("PING\n"))
 
 	reader := bufio.NewReader(conn)

@@ -83,6 +83,10 @@ func main() {
 		log.Error(context.Background(), "failed to create directories", log.Attr{K: "error", V: err.Error()})
 		os.Exit(1)
 	}
+	config.MigrateStateDir()
+	if err := config.ChownDirs(os.Getenv("SUDO_USER")); err != nil {
+		log.Warn(context.Background(), "failed to chown directories", log.Attr{K: "error", V: err.Error()})
+	}
 
 	if err := services.AcquireLock(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

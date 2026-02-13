@@ -56,3 +56,6 @@ services:
       - name: TUNNEL_NAME
         required: true
         description: Named Cloudflare tunnel for permanent URL
+      - name: TUNNEL_ID
+        required: true
+        description: Cloudflare tunnel ID
