@@ -105,6 +105,7 @@ func Start(name string) error {
 		} else {
 			log.Info(context.Background(), name, log.Attr{K: "status", V: "exited"})
 		}
+		notifyStatusUpdate()
 	}()
 
 	return nil
