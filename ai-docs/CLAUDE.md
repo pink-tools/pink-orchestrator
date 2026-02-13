@@ -19,10 +19,10 @@ Right-click tray icon to:
 ## Structure
 
 ```
-~/.pink-orchestrator/
+~/pink-tools/pink-orchestrator/
 ├── state.json           # running services, installed versions
 ├── registry.yaml        # cached service definitions
-└── orchestrator.sock    # IPC socket
+└── pink-orchestrator.port  # IPC port (runtime)
 
 ~/pink-tools/
 ├── pink-transcriber/
@@ -34,6 +34,6 @@ Right-click tray icon to:
 ## Build
 
 ```bash
-cd ~/Desktop/_claude/pink-orchestrator
+cd ~/Desktop/pink/pink-tools/pink-orchestrator
 go build .
 ```

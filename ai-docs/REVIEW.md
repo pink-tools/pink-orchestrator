@@ -28,13 +28,10 @@ System tray app for managing pink-tools services (install/start/stop/update).
 **2. Headless logging**
 - **Problem:** When running without terminal (autostart/tray-only), stdout/stderr goes nowhere
 - **TTY detection exists:** `internal/services/selfupdate.go:82` — `!term.IsTerminal(int(os.Stdin.Fd()))` but only used for auto-restart decision
-- **Fix:** Reuse TTY detection, if headless write logs to `~/.pink-orchestrator/orchestrator.log`
+- **Fix:** Reuse TTY detection, if headless write logs to `~/pink-tools/pink-orchestrator/orchestrator.log`
 
-**3. Dead code cleanup**
-- **Problem:** `config.ServicePidFile()` defined but never called
-- **Location:** `internal/config/config.go:62-64`
-- **Evidence:** Zero references in entire codebase, PID managed via in-memory map `runningProcesses` at `services.go:34`
-- **Fix:** Remove unused function
+~~**3. Dead code cleanup**~~
+- ~~`config.ServicePidFile()` defined but never called~~ DONE — removed
 
 ## Minor Issues (Optional)
 
