@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pink-tools/pink-core"
@@ -137,14 +139,26 @@ func Install(name string, progress func(string)) error {
 }
 
 func chownServiceDir(name string) {
-	if os.Getuid() != 0 {
+	if runtime.GOOS == "windows" || os.Getuid() != 0 {
 		return
 	}
 	sudoUser := os.Getenv("SUDO_USER")
 	if sudoUser == "" {
 		return
 	}
-	exec.Command("chown", "-R", sudoUser+":staff", core.ServiceDir(name)).Run()
+	u, err := user.Lookup(sudoUser)
+	if err != nil {
+		return
+	}
+	uid, _ := strconv.Atoi(u.Uid)
+	gid, _ := strconv.Atoi(u.Gid)
+	dir := core.ServiceDir(name)
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err == nil {
+			os.Chown(path, uid, gid)
+		}
+		return nil
+	})
 }
 
 // verifyBinary runs --version to check binary is executable and not corrupted

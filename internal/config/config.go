@@ -1,9 +1,7 @@
 package config
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -77,22 +75,6 @@ func EnsureDirs() error {
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-// ChownDirs recursively chowns pink-tools directories to the given user.
-// Called after EnsureDirs when running as root via sudo.
-func ChownDirs(username string) error {
-	if username == "" {
-		return nil
-	}
-	dirs := []string{core.PinkToolsDir()}
-	for _, dir := range dirs {
-		cmd := exec.Command("chown", "-R", username+":staff", dir)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("chown %s: %w", dir, err)
 		}
 	}
 	return nil
