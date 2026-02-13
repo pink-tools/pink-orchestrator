@@ -152,6 +152,11 @@ func chownServiceDir(name string) {
 	}
 	uid, _ := strconv.Atoi(u.Uid)
 	gid, _ := strconv.Atoi(u.Gid)
+
+	// Chown parent dir (/Users/pink-tools/) so services can create subdirs
+	os.Chown(core.PinkToolsDir(), uid, gid)
+
+	// Chown service dir recursively
 	dir := core.ServiceDir(name)
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err == nil {
