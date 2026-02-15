@@ -41,12 +41,10 @@ func RegistryCacheFile() string {
 	return filepath.Join(OrchestratorDir(), "registry.yaml")
 }
 
+// ServiceBinary returns full path to a service binary.
+// Deprecated: use core.BinaryPath instead.
 func ServiceBinary(name string) string {
-	bin := name
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-	return filepath.Join(core.ServiceDir(name), bin)
+	return core.BinaryPath(name)
 }
 
 func ServiceEnvFile(name string) string {
