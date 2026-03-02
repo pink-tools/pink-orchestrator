@@ -23,7 +23,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
-	github.com/pink-tools/pink-otel v1.8.0 // indirect
+	github.com/pink-tools/pink-otel v1.8.1 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
