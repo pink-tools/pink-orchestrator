@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"runtime"
+	"sync"
 
 	webview "github.com/webview/webview_go"
 )
@@ -40,6 +42,22 @@ func FormMain() {
 
 	w.Bind("onCancel", func() {
 		w.Terminate()
+	})
+
+	var previewMu sync.Mutex
+	var previewCmd *exec.Cmd
+
+	w.Bind("playSound", func(path string, volume float64) {
+		go func() {
+			previewMu.Lock()
+			if previewCmd != nil && previewCmd.Process != nil {
+				previewCmd.Process.Kill()
+			}
+			cmd := exec.Command("afplay", "--volume", fmt.Sprintf("%.2f", volume), path)
+			previewCmd = cmd
+			previewMu.Unlock()
+			cmd.Run()
+		}()
 	})
 
 	w.SetHtml(formHTML(specJSON))

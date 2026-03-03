@@ -142,14 +142,44 @@ input:focus, select:focus {
 .hotkey-btn.capturing {
 	color: #e94560;
 }
-.sound-wrap select {
+.sound-row {
+	display: flex;
+	gap: 6px;
+	align-items: center;
 	margin-bottom: 6px;
+}
+.sound-row select {
+	flex: 1;
+	width: auto;
 }
 .sound-wrap .custom-input {
 	display: none;
 }
 .sound-wrap .custom-input.visible {
 	display: block;
+}
+.play-btn {
+	width: 34px;
+	height: 34px;
+	background: #16213e;
+	border: 1px solid #0f3460;
+	border-radius: 4px;
+	color: #e94560;
+	font-size: 13px;
+	cursor: pointer;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	transition: border-color 0.2s, background 0.15s;
+}
+.play-btn:hover {
+	border-color: #e94560;
+}
+.play-btn.playing {
+	background: #e94560;
+	color: white;
 }
 .buttons {
 	display: flex;
@@ -264,7 +294,19 @@ fields.forEach(f => {
 			}
 		});
 
-		wrap.appendChild(sel);
+		const row = document.createElement('div');
+		row.className = 'sound-row';
+		const playBtn = document.createElement('button');
+		playBtn.type = 'button';
+		playBtn.className = 'play-btn';
+		playBtn.innerHTML = '&#9654;';
+		playBtn.addEventListener('click', () => {
+			const path = sel.value === '__custom__' ? customInput.value : sel.value;
+			if (path && path !== '__custom__') preview(playBtn, path, getVolume());
+		});
+		row.appendChild(sel);
+		row.appendChild(playBtn);
+		wrap.appendChild(row);
 		wrap.appendChild(customInput);
 		div.appendChild(wrap);
 	} else if (type === 'range') {
@@ -280,8 +322,17 @@ fields.forEach(f => {
 		const span = document.createElement('span');
 		span.textContent = input.value;
 		input.addEventListener('input', () => { span.textContent = input.value; });
+		const playBtn = document.createElement('button');
+		playBtn.type = 'button';
+		playBtn.className = 'play-btn';
+		playBtn.innerHTML = '&#9654;';
+		playBtn.addEventListener('click', () => {
+			const path = getFirstSoundPath();
+			if (path) preview(playBtn, path, Number(input.value));
+		});
 		wrap.appendChild(input);
 		wrap.appendChild(span);
+		wrap.appendChild(playBtn);
 		div.appendChild(wrap);
 	} else if (type === 'confirm') {
 		const wrap = document.createElement('div');
@@ -378,6 +429,27 @@ function codeToKey(code) {
 		'Minus': '-', 'Equal': '='
 	};
 	return keys[code] || code.toLowerCase();
+}
+
+function getVolume() {
+	const el = document.querySelector('input[type="range"]');
+	return el ? Number(el.value) : 1;
+}
+
+function getFirstSoundPath() {
+	const sel = document.querySelector('select[data-type="sound"]');
+	if (!sel) return '';
+	if (sel.value === '__custom__') {
+		const ci = document.querySelector('[data-name="' + sel.dataset.name + '__custom"]');
+		return ci ? ci.value : '';
+	}
+	return sel.value;
+}
+
+function preview(btn, path, volume) {
+	btn.classList.add('playing');
+	playSound(path, volume);
+	setTimeout(() => btn.classList.remove('playing'), 600);
 }
 
 function save() {
