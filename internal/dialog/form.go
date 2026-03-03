@@ -152,11 +152,17 @@ input:focus, select:focus {
 	flex: 1;
 	width: auto;
 }
-.sound-wrap .custom-input {
+.custom-row {
 	display: none;
+	gap: 6px;
+	align-items: center;
 }
-.sound-wrap .custom-input.visible {
-	display: block;
+.custom-row.visible {
+	display: flex;
+}
+.custom-row input[type="text"] {
+	flex: 1;
+	width: auto;
 }
 .play-btn {
 	width: 34px;
@@ -272,25 +278,46 @@ fields.forEach(f => {
 		customOpt.textContent = 'Custom path...';
 		sel.appendChild(customOpt);
 
+		const customRow = document.createElement('div');
+		customRow.className = 'custom-row';
 		const customInput = document.createElement('input');
 		customInput.type = 'text';
-		customInput.className = 'custom-input';
 		customInput.placeholder = '/path/to/sound.wav';
 		customInput.dataset.name = f.name + '__custom';
+
+		const fileInput = document.createElement('input');
+		fileInput.type = 'file';
+		fileInput.accept = 'audio/*,.aiff,.aif,.wav,.mp3,.ogg,.flac';
+		fileInput.style.display = 'none';
+		fileInput.addEventListener('change', () => {
+			if (fileInput.files.length > 0) {
+				customInput.value = fileInput.value.replace(/^C:\\fakepath\\/i, '');
+			}
+		});
+
+		const browseBtn = document.createElement('button');
+		browseBtn.type = 'button';
+		browseBtn.className = 'play-btn';
+		browseBtn.textContent = '\u2026';
+		browseBtn.addEventListener('click', () => fileInput.click());
+
+		customRow.appendChild(customInput);
+		customRow.appendChild(browseBtn);
+		customRow.appendChild(fileInput);
 
 		// Check if current value is not in options
 		const optValues = (f.options || []).map(o => String(o.value !== undefined ? o.value : o));
 		if (val && !optValues.includes(String(val))) {
 			sel.value = '__custom__';
 			customInput.value = val;
-			customInput.classList.add('visible');
+			customRow.classList.add('visible');
 		}
 
 		sel.addEventListener('change', () => {
 			if (sel.value === '__custom__') {
-				customInput.classList.add('visible');
+				customRow.classList.add('visible');
 			} else {
-				customInput.classList.remove('visible');
+				customRow.classList.remove('visible');
 			}
 		});
 
@@ -307,7 +334,7 @@ fields.forEach(f => {
 		row.appendChild(sel);
 		row.appendChild(playBtn);
 		wrap.appendChild(row);
-		wrap.appendChild(customInput);
+		wrap.appendChild(customRow);
 		div.appendChild(wrap);
 	} else if (type === 'range') {
 		const wrap = document.createElement('div');
