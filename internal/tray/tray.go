@@ -382,7 +382,15 @@ func (t *Tray) handleAction(serviceName, actionName string) {
 		return
 	}
 
-	services.SetLastStatus(serviceName, "Settings saved")
+	// Restart daemon to apply new settings immediately
+	status := services.GetStatus(serviceName)
+	if status.Status == services.StatusRunning {
+		log.Info(context.Background(), "restarting to apply settings", log.Attr{K: "service", V: serviceName})
+		services.Restart(serviceName)
+		services.SetLastStatus(serviceName, "Settings applied")
+	} else {
+		services.SetLastStatus(serviceName, "Settings saved")
+	}
 }
 
 func truncate(s string, max int) string {

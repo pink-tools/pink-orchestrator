@@ -29,7 +29,7 @@ func FormMain() {
 	defer w.Destroy()
 
 	w.SetTitle("Settings")
-	w.SetSize(500, 450, webview.HintNone)
+	w.SetSize(500, 600, webview.HintNone)
 
 	w.Bind("onSave", func(jsonString string) {
 		if err := json.Unmarshal([]byte(jsonString), &values); err == nil {
