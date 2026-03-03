@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"runtime"
-	"strings"
 
+	"github.com/ncruces/zenity"
 	"github.com/pink-tools/pink-orchestrator/internal/player"
 	webview "github.com/webview/webview_go"
 )
@@ -70,23 +69,14 @@ func FormMain() {
 }
 
 func openFileDialog() string {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("osascript", "-e", `POSIX path of (choose file of type {"public.audio"} with prompt "Choose sound file")`)
-	case "linux":
-		cmd = exec.Command("zenity", "--file-selection", "--file-filter=Audio files|*.wav *.aiff *.aif *.mp3 *.ogg *.flac")
-	case "windows":
-		cmd = exec.Command("powershell", "-NoProfile", "-Command",
-			`Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.OpenFileDialog; $d.Filter = 'Audio files|*.wav;*.mp3;*.aiff;*.flac'; if ($d.ShowDialog() -eq 'OK') { $d.FileName }`)
-	default:
-		return ""
-	}
-	out, err := cmd.Output()
+	path, err := zenity.SelectFile(
+		zenity.Title("Choose sound file"),
+		zenity.FileFilters{{Name: "Audio files", Patterns: []string{"*.wav", "*.aiff", "*.aif", "*.mp3", "*.ogg", "*.flac"}}},
+	)
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return path
 }
 
 func dialogHeight(specJSON []byte) int {
