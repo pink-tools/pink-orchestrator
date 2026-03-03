@@ -124,6 +124,24 @@ input:focus, select:focus {
 .check-wrap span {
 	font-size: 14px;
 }
+.hotkey-btn {
+	width: 100%;
+	padding: 8px 10px;
+	background: #16213e;
+	border: 1px solid #0f3460;
+	border-radius: 4px;
+	color: #eee;
+	font-size: 14px;
+	cursor: pointer;
+	text-align: left;
+}
+.hotkey-btn:focus, .hotkey-btn.capturing {
+	border-color: #e94560;
+	outline: none;
+}
+.hotkey-btn.capturing {
+	color: #e94560;
+}
 .sound-wrap select {
 	margin-bottom: 6px;
 }
@@ -294,8 +312,17 @@ fields.forEach(f => {
 		input.dataset.name = f.name;
 		input.value = val;
 		div.appendChild(input);
+	} else if (type === 'hotkey') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'hotkey-btn';
+		btn.dataset.name = f.name;
+		btn.dataset.value = val;
+		btn.textContent = val || 'Click to set hotkey';
+		btn.addEventListener('click', () => startHotkeyCapture(btn));
+		div.appendChild(btn);
 	} else {
-		// text, url, hotkey, file
+		// text, url, file
 		const input = document.createElement('input');
 		input.type = 'text';
 		input.dataset.name = f.name;
@@ -306,11 +333,42 @@ fields.forEach(f => {
 	container.appendChild(div);
 });
 
+function startHotkeyCapture(btn) {
+	btn.classList.add('capturing');
+	btn.textContent = 'Press hotkey...';
+
+	function onKeyDown(e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		// Ignore standalone modifier keys — wait for actual key
+		if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
+
+		const parts = [];
+		if (e.ctrlKey) parts.push('ctrl');
+		if (e.altKey) parts.push('alt');
+		if (e.shiftKey) parts.push('shift');
+		if (e.metaKey) parts.push('cmd');
+		parts.push(e.key.toLowerCase());
+
+		const hotkey = parts.join('+');
+		btn.textContent = hotkey;
+		btn.dataset.value = hotkey;
+		btn.classList.remove('capturing');
+		document.removeEventListener('keydown', onKeyDown, true);
+	}
+
+	document.addEventListener('keydown', onKeyDown, true);
+}
+
 function save() {
 	const result = {};
 	fields.forEach(f => {
 		const type = f.type || 'text';
-		if (type === 'confirm') {
+		if (type === 'hotkey') {
+			const el = document.querySelector('.hotkey-btn[data-name="' + f.name + '"]');
+			result[f.name] = el ? el.dataset.value : '';
+		} else if (type === 'confirm') {
 			const el = document.querySelector('[data-name="' + f.name + '"]');
 			result[f.name] = el ? el.checked : false;
 		} else if (type === 'sound') {

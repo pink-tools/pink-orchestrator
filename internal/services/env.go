@@ -28,9 +28,13 @@ func loadServiceEnv(name string) []string {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		if strings.Contains(line, "=") {
-			env = append(env, line)
+		idx := strings.IndexByte(line, '=')
+		if idx < 0 {
+			continue
 		}
+		key := line[:idx]
+		val := strings.Trim(line[idx+1:], "\"'")
+		env = append(env, key+"="+val)
 	}
 
 	return env
