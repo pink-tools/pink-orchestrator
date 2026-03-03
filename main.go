@@ -14,6 +14,7 @@ import (
 	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/api"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
+	"github.com/pink-tools/pink-orchestrator/internal/dialog"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 	"github.com/pink-tools/pink-orchestrator/internal/services"
 	"github.com/pink-tools/pink-orchestrator/internal/tray"
@@ -24,6 +25,9 @@ var version = "dev"
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "--dialog":
+			dialog.FormMain()
+			return
 		case "--version", "-V":
 			fmt.Printf("pink-orchestrator v%s\n", version)
 			return

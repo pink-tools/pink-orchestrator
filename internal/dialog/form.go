@@ -1,38 +1,41 @@
 package dialog
 
 import (
+	"bytes"
 	"encoding/json"
-
-	webview "github.com/webview/webview_go"
+	"os"
+	"os/exec"
 )
 
-// ShowForm renders a FormSpec JSON as a WebView form.
-// Returns (values, true) on save, (nil, false) on cancel.
+// ShowForm spawns a subprocess to render a FormSpec JSON as a WebView form.
+// Subprocess is needed because macOS requires NSWindow on the main thread,
+// and systray already owns it.
+// Returns (values, true) on save, (nil, false) on cancel/error.
 func ShowForm(specJSON []byte) (map[string]any, bool) {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, false
+	}
+
+	cmd := exec.Command(exe, "--dialog")
+	cmd.Stdin = bytes.NewReader(specJSON)
+	cmd.Stderr = os.Stderr
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, false
+	}
+
+	output = bytes.TrimSpace(output)
+	if len(output) == 0 {
+		return nil, false
+	}
+
 	var values map[string]any
-	saved := false
+	if err := json.Unmarshal(output, &values); err != nil {
+		return nil, false
+	}
 
-	w := webview.New(false)
-	defer w.Destroy()
-
-	w.SetTitle("Settings")
-	w.SetSize(500, 450, webview.HintNone)
-
-	w.Bind("onSave", func(jsonString string) {
-		if err := json.Unmarshal([]byte(jsonString), &values); err == nil {
-			saved = true
-		}
-		w.Terminate()
-	})
-
-	w.Bind("onCancel", func() {
-		w.Terminate()
-	})
-
-	w.SetHtml(formHTML(specJSON))
-	w.Run()
-
-	return values, saved
+	return values, true
 }
 
 func formHTML(specJSON []byte) string {
