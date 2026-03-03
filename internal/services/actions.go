@@ -1,11 +1,9 @@
 package services
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"time"
 
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 )
@@ -18,18 +16,13 @@ type Action struct {
 
 // GetActions runs {binary} --actions and parses the JSON output.
 // Returns nil if the service is not installed or the command fails.
-// Uses a 3s timeout to handle services that don't support --actions
-// and start as daemons instead.
 func GetActions(name string) []Action {
 	if !IsInstalled(name) {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	binary := config.ServiceBinary(name)
-	cmd := exec.CommandContext(ctx, binary, "--actions")
+	cmd := exec.Command(binary, "--actions")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil
