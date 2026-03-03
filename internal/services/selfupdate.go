@@ -96,18 +96,17 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 		return fmt.Errorf("failed to replace binary: %w", err)
 	}
 
-	// macOS: systray (NSStatusBar) needs a fresh process — can't exec in-place.
-	// Don't auto-restart; let user restart manually.
+	pendingRestart = true
+
 	if runtime.GOOS == "darwin" {
 		if newVersion != "" {
-			progress(fmt.Sprintf("Updated to %s. Restart to apply.", newVersion))
+			progress(fmt.Sprintf("Updated to %s. Quitting.", newVersion))
 		} else {
-			progress("Updated. Restart to apply.")
+			progress("Updated. Quitting.")
 		}
 		return nil
 	}
 
-	pendingRestart = true
 	progress("Update complete. Restarting...")
 	return nil
 }
