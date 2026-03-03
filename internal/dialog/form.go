@@ -349,7 +349,10 @@ function startHotkeyCapture(btn) {
 		if (e.altKey) parts.push('alt');
 		if (e.shiftKey) parts.push('shift');
 		if (e.metaKey) parts.push('cmd');
-		parts.push(e.key.toLowerCase());
+
+		// Use e.code for physical key (Alt+Q produces œ on Mac, but code is KeyQ)
+		const key = codeToKey(e.code);
+		if (key) parts.push(key);
 
 		const hotkey = parts.join('+');
 		btn.textContent = hotkey;
@@ -359,6 +362,22 @@ function startHotkeyCapture(btn) {
 	}
 
 	document.addEventListener('keydown', onKeyDown, true);
+}
+
+function codeToKey(code) {
+	if (code.startsWith('Key')) return code.slice(3).toLowerCase();
+	if (code.startsWith('Digit')) return code.slice(5);
+	if (code.startsWith('Numpad')) return 'num' + code.slice(6).toLowerCase();
+	if (code.match(/^F\d+$/)) return code.toLowerCase();
+	var keys = {
+		'Space': 'space', 'Enter': 'enter', 'Escape': 'escape',
+		'Tab': 'tab', 'Backspace': 'backspace', 'Delete': 'delete',
+		'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right',
+		'BracketLeft': '[', 'BracketRight': ']',
+		'Semicolon': ';', 'Comma': ',', 'Period': '.', 'Slash': '/',
+		'Minus': '-', 'Equal': '='
+	};
+	return keys[code] || code.toLowerCase();
 }
 
 function save() {

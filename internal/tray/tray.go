@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/getlantern/systray"
+	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/dialog"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
@@ -382,11 +383,15 @@ func (t *Tray) handleAction(serviceName, actionName string) {
 		return
 	}
 
-	// Restart daemon to apply new settings immediately
+	// Tell running service to reload config via IPC
 	status := services.GetStatus(serviceName)
 	if status.Status == services.StatusRunning {
-		log.Info(context.Background(), "restarting to apply settings", log.Attr{K: "service", V: serviceName})
-		services.Restart(serviceName)
+		resp, err := core.SendCommand(serviceName, "RELOAD")
+		if err != nil || resp != "OK" {
+			// Service doesn't support RELOAD — restart as fallback
+			log.Info(context.Background(), "reload not supported, restarting", log.Attr{K: "service", V: serviceName})
+			services.Restart(serviceName)
+		}
 		services.SetLastStatus(serviceName, "Settings applied")
 	} else {
 		services.SetLastStatus(serviceName, "Settings saved")

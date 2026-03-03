@@ -29,7 +29,7 @@ func FormMain() {
 	defer w.Destroy()
 
 	w.SetTitle("Settings")
-	w.SetSize(500, 600, webview.HintNone)
+	w.SetSize(500, dialogHeight(specJSON), webview.HintNone)
 
 	w.Bind("onSave", func(jsonString string) {
 		if err := json.Unmarshal([]byte(jsonString), &values); err == nil {
@@ -49,4 +49,20 @@ func FormMain() {
 		data, _ := json.Marshal(values)
 		os.Stdout.Write(data)
 	}
+}
+
+func dialogHeight(specJSON []byte) int {
+	var spec struct {
+		Fields []json.RawMessage `json:"fields"`
+	}
+	json.Unmarshal(specJSON, &spec)
+
+	h := 130 + len(spec.Fields)*70
+	if h < 400 {
+		h = 400
+	}
+	if h > 900 {
+		h = 900
+	}
+	return h
 }
