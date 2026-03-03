@@ -1,14 +1,15 @@
 package services
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"time"
 
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 )
+
+// minActionsVersion is the minimum service version that supports --actions.
+const minActionsVersion = "v1.9.21"
 
 type Action struct {
 	Name  string `json:"name"`
@@ -16,20 +17,24 @@ type Action struct {
 	Desc  string `json:"desc"`
 }
 
+// supportsActions checks if the installed binary version supports --actions.
+func supportsActions(name string) bool {
+	v := GetInstalledVersion(name)
+	if v == "" {
+		return false
+	}
+	return !isNewer(minActionsVersion, v) // v >= minActionsVersion
+}
+
 // GetActions runs {binary} --actions and parses the JSON output.
-// Returns nil if the service is not installed or the command fails.
-// Timeout guards against old binaries that don't support --actions
-// and start as daemons instead of exiting.
+// Returns nil if the service is not installed or too old.
 func GetActions(name string) []Action {
-	if !IsInstalled(name) {
+	if !IsInstalled(name) || !supportsActions(name) {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	binary := config.ServiceBinary(name)
-	cmd := exec.CommandContext(ctx, binary, "--actions")
+	cmd := exec.Command(binary, "--actions")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil
