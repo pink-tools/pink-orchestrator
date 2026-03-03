@@ -9,7 +9,6 @@ import (
 )
 
 // ExecRestart replaces the current process with a new instance of the binary.
-// Only used on Linux — macOS skips auto-restart (systray needs a fresh process).
 func ExecRestart() error {
 	exe, err := os.Executable()
 	if err != nil {
