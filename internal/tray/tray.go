@@ -9,9 +9,15 @@ import (
 
 	"github.com/getlantern/systray"
 	"github.com/pink-tools/pink-core/log"
+	"github.com/pink-tools/pink-orchestrator/internal/dialog"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 	"github.com/pink-tools/pink-orchestrator/internal/services"
 )
+
+type actionItem struct {
+	name     string // action name (e.g. "settings")
+	menuItem *systray.MenuItem
+}
 
 type serviceMenu struct {
 	name       string
@@ -27,6 +33,7 @@ type serviceMenu struct {
 	mRestart   *systray.MenuItem
 	mEnv       *systray.MenuItem
 	mUninstall *systray.MenuItem
+	actions    []actionItem
 }
 
 type Tray struct {
@@ -193,6 +200,15 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 		sm.mError.Hide()
 	}
 
+	showActions := !installing && status.Status != services.StatusNotInstalled
+	for _, a := range sm.actions {
+		if showActions {
+			a.menuItem.Show()
+		} else {
+			a.menuItem.Hide()
+		}
+	}
+
 	if installing {
 		sm.mUpdate.Hide()
 		sm.mInstall.Show()
@@ -251,6 +267,18 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	sm.mStop = sm.menuItem.AddSubMenuItem("Stop", "")
 	sm.mRestart = sm.menuItem.AddSubMenuItem("Restart", "")
 	sm.mEnv = sm.menuItem.AddSubMenuItem("Edit .env", "")
+
+	if services.IsInstalled(name) {
+		for _, a := range services.GetActions(name) {
+			item := sm.menuItem.AddSubMenuItem(a.Label, a.Desc)
+			sm.actions = append(sm.actions, actionItem{name: a.Name, menuItem: item})
+			go func(actionName string) {
+				for range item.ClickedCh {
+					go t.handleAction(name, actionName)
+				}
+			}(a.Name)
+		}
+	}
 
 	sm.menuItem.AddSubMenuItem("───────────", "").Disable()
 	sm.mUpdate = sm.menuItem.AddSubMenuItem("Update", "")
@@ -333,6 +361,28 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	}()
 
 	return sm
+}
+
+func (t *Tray) handleAction(serviceName, actionName string) {
+	specJSON, err := services.DescribeAction(serviceName, actionName)
+	if err != nil {
+		log.Error(context.Background(), "describe action failed", log.Attr{K: "service", V: serviceName}, log.Attr{K: "action", V: actionName}, log.Attr{K: "error", V: err.Error()})
+		services.SetLastStatus(serviceName, fmt.Sprintf("Failed: %s", err))
+		return
+	}
+
+	values, ok := dialog.ShowForm(specJSON)
+	if !ok {
+		return
+	}
+
+	if err := services.ExecuteAction(serviceName, actionName, values); err != nil {
+		log.Error(context.Background(), "execute action failed", log.Attr{K: "service", V: serviceName}, log.Attr{K: "action", V: actionName}, log.Attr{K: "error", V: err.Error()})
+		services.SetLastStatus(serviceName, fmt.Sprintf("Failed: %s", err))
+		return
+	}
+
+	services.SetLastStatus(serviceName, "Settings saved")
 }
 
 func truncate(s string, max int) string {
