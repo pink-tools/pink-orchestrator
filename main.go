@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
+	"path/filepath"
 	"runtime"
+	"strconv"
 
+	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/api"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
@@ -76,6 +80,8 @@ func main() {
 		os.Exit(0)
 	}
 
+	autoInstall()
+
 	log.Init("pink-orchestrator", version)
 	log.SetServiceNameWidth(registry.MaxServiceNameLen())
 
@@ -104,6 +110,63 @@ func main() {
 
 	t := tray.New()
 	t.Run()
+}
+
+func autoInstall() {
+	currentPath, err := os.Executable()
+	if err != nil {
+		return
+	}
+	currentPath, err = filepath.EvalSymlinks(currentPath)
+	if err != nil {
+		return
+	}
+
+	expectedPath := core.BinaryPath("pink-orchestrator")
+	if currentPath == expectedPath {
+		return
+	}
+
+	targetDir := filepath.Dir(expectedPath)
+	fmt.Printf("Installing to %s...\n", targetDir)
+
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	data, err := os.ReadFile(currentPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to read binary: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := os.WriteFile(expectedPath, data, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to write binary: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Chown to real user so the dir isn't stuck as root-only
+	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
+		if u, err := user.Lookup(sudoUser); err == nil {
+			uid, _ := strconv.Atoi(u.Uid)
+			gid, _ := strconv.Atoi(u.Gid)
+			os.Chown(core.PinkToolsDir(), uid, gid)
+			filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
+				if err == nil {
+					os.Chown(path, uid, gid)
+				}
+				return nil
+			})
+		}
+	}
+
+	fmt.Println("Installed. Restarting from new location...")
+
+	if err := services.ExecPath(expectedPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to exec: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func printUsage() {

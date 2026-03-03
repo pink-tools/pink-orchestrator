@@ -9,12 +9,16 @@ import (
 	"strings"
 
 	"github.com/pink-tools/pink-orchestrator/internal/config"
-	"golang.org/x/term"
 )
 
 const orchestratorRepo = "pink-tools/pink-orchestrator"
 
 var orchestratorVersion string // Set by main package
+var pendingRestart bool
+
+func PendingRestart() bool {
+	return pendingRestart
+}
 
 func SetOrchestratorBinaryVersion(v string) {
 	orchestratorVersion = v
@@ -76,25 +80,24 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 
 	progress("Installing update...")
 
-	// Windows: always restart (console window closes, new one opens)
-	// Unix TTY: don't restart (output would be lost)
-	// Unix non-TTY: restart (daemon mode)
-	autoRestart := runtime.GOOS == "windows" || !term.IsTerminal(int(os.Stdin.Fd()))
-
-	if err := runUpdater(currentBinary, tmpBinary, autoRestart); err != nil {
-		os.Remove(tmpBinary)
-		return fmt.Errorf("failed to start updater: %w", err)
-	}
-
-	// NOTE: Version is NOT saved here because the actual file replacement
-	// happens in a background script after this process exits.
-	// Version will be updated on next startup via InitOrchestratorVersion()
-
-	if autoRestart {
+	if runtime.GOOS == "windows" {
+		// Windows can't replace a running binary — use background batch script
+		if err := runWindowsUpdater(currentBinary, tmpBinary, os.Getpid(), true); err != nil {
+			os.Remove(tmpBinary)
+			return fmt.Errorf("failed to start updater: %w", err)
+		}
 		progress("Update complete. Restarting...")
-	} else {
-		progress("Update complete. Please restart manually.")
+		return nil
 	}
+
+	// Unix: replace binary directly (macOS/Linux allow replacing a running binary's file)
+	if err := os.Rename(tmpBinary, currentBinary); err != nil {
+		os.Remove(tmpBinary)
+		return fmt.Errorf("failed to replace binary: %w", err)
+	}
+
+	pendingRestart = true
+	progress("Update complete. Restarting...")
 	return nil
 }
 
@@ -117,41 +120,6 @@ func getVersionFromBinary(path string) string {
 		return strings.TrimPrefix(s, "pink-orchestrator v")
 	}
 	return ""
-}
-
-func runUpdater(targetPath, newBinary string, autoRestart bool) error {
-	pid := os.Getpid()
-
-	if runtime.GOOS == "windows" {
-		return runWindowsUpdater(targetPath, newBinary, pid, autoRestart)
-	}
-	return runUnixUpdater(targetPath, newBinary, pid, autoRestart)
-}
-
-func runUnixUpdater(targetPath, newBinary string, pid int, autoRestart bool) error {
-	var script string
-	if autoRestart {
-		script = fmt.Sprintf(`#!/bin/bash
-while kill -0 %d 2>/dev/null; do sleep 0.1; done
-mv "%s" "%s"
-"%s" &
-rm "$0"
-`, pid, newBinary, targetPath, targetPath)
-	} else {
-		script = fmt.Sprintf(`#!/bin/bash
-while kill -0 %d 2>/dev/null; do sleep 0.1; done
-mv "%s" "%s"
-rm "$0"
-`, pid, newBinary, targetPath)
-	}
-
-	scriptPath := filepath.Join(os.TempDir(), "pink-orchestrator-updater.sh")
-	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
-		return err
-	}
-
-	cmd := exec.Command("bash", scriptPath)
-	return cmd.Start()
 }
 
 func runWindowsUpdater(targetPath, newBinary string, pid int, autoRestart bool) error {

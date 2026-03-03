@@ -64,6 +64,15 @@ func (t *Tray) onExit() {
 	log.Info(context.Background(), "shutting down")
 	services.SaveState()
 	services.Shutdown()
+
+	if services.PendingRestart() {
+		log.Info(context.Background(), "restarting after update")
+		services.ReleaseLock()
+		if err := services.ExecRestart(); err != nil {
+			log.Error(context.Background(), "restart failed", log.Attr{K: "error", V: err.Error()})
+		}
+	}
+
 	log.Info(context.Background(), "stopped")
 	os.Exit(0)
 }
