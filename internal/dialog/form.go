@@ -285,25 +285,17 @@ fields.forEach(f => {
 		customInput.placeholder = '/path/to/sound.wav';
 		customInput.dataset.name = f.name + '__custom';
 
-		const fileInput = document.createElement('input');
-		fileInput.type = 'file';
-		fileInput.accept = 'audio/*,.aiff,.aif,.wav,.mp3,.ogg,.flac';
-		fileInput.style.display = 'none';
-		fileInput.addEventListener('change', () => {
-			if (fileInput.files.length > 0) {
-				customInput.value = fileInput.value.replace(/^C:\\fakepath\\/i, '');
-			}
-		});
-
 		const browseBtn = document.createElement('button');
 		browseBtn.type = 'button';
 		browseBtn.className = 'play-btn';
 		browseBtn.textContent = '\u2026';
-		browseBtn.addEventListener('click', () => fileInput.click());
+		browseBtn.addEventListener('click', async () => {
+			const path = await openFile();
+			if (path) customInput.value = path;
+		});
 
 		customRow.appendChild(customInput);
 		customRow.appendChild(browseBtn);
-		customRow.appendChild(fileInput);
 
 		// Check if current value is not in options
 		const optValues = (f.options || []).map(o => String(o.value !== undefined ? o.value : o));
