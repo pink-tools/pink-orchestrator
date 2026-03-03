@@ -100,9 +100,9 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 
 	if runtime.GOOS == "darwin" {
 		if newVersion != "" {
-			progress(fmt.Sprintf("Updated to %s. Quitting.", newVersion))
+			progress(fmt.Sprintf("Updated to %s. Restart to apply, quitting.", newVersion))
 		} else {
-			progress("Updated. Quitting.")
+			progress("Updated. Restart to apply, quitting.")
 		}
 		return nil
 	}
