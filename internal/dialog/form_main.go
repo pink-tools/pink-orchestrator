@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"runtime"
-	"sync"
 
+	"github.com/pink-tools/pink-orchestrator/internal/player"
 	webview "github.com/webview/webview_go"
 )
 
@@ -44,20 +43,15 @@ func FormMain() {
 		w.Terminate()
 	})
 
-	var previewMu sync.Mutex
-	var previewCmd *exec.Cmd
+	pl, _ := player.New()
+	if pl != nil {
+		defer pl.Close()
+	}
 
 	w.Bind("playSound", func(path string, volume float64) {
-		go func() {
-			previewMu.Lock()
-			if previewCmd != nil && previewCmd.Process != nil {
-				previewCmd.Process.Kill()
-			}
-			cmd := exec.Command("afplay", "--volume", fmt.Sprintf("%.2f", volume), path)
-			previewCmd = cmd
-			previewMu.Unlock()
-			cmd.Run()
-		}()
+		if pl != nil {
+			pl.Play(path, volume)
+		}
 	})
 
 	w.SetHtml(formHTML(specJSON))
