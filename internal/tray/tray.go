@@ -483,5 +483,7 @@ func (t *Tray) updateOrchestrator() {
 		return
 	}
 
-	systray.Quit()
+	if services.PendingRestart() {
+		systray.Quit()
+	}
 }
