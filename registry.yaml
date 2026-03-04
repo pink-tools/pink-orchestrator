@@ -41,21 +41,6 @@ services:
     system_deps:
       - name: git
         winget: Git.Git
-      - name: cloudflared
-        brew: cloudflared
-        apt: cloudflared
-        winget: Cloudflare.cloudflared
       - name: claude
         unix_script: "curl -fsSL https://claude.ai/install.sh | bash"
         winget: Anthropic.ClaudeCode
-    env_vars:
-      - name: TELEGRAM_BOT_TOKEN
-        required: true
-      - name: TELEGRAM_USER_ID
-        required: true
-      - name: TUNNEL_NAME
-        required: true
-        description: Named Cloudflare tunnel for permanent URL
-      - name: TUNNEL_ID
-        required: true
-        description: Cloudflare tunnel ID
