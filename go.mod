@@ -3,8 +3,10 @@ module github.com/pink-tools/pink-orchestrator
 go 1.25.4
 
 require (
+	github.com/gen2brain/malgo v0.11.22
 	github.com/getlantern/systray v1.2.2
-	github.com/pink-tools/pink-core v1.10.0
+	github.com/ncruces/zenity v0.10.14
+	github.com/pink-tools/pink-core v1.11.1
 	github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6
 	golang.org/x/mod v0.32.0
 	golang.org/x/sys v0.39.0
@@ -15,7 +17,6 @@ require (
 	github.com/akavel/rsrc v0.10.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dchest/jsmin v0.0.0-20220218165748-59f39799265f // indirect
-	github.com/gen2brain/malgo v0.11.22 // indirect
 	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect
 	github.com/getlantern/errors v0.0.0-20190325191628-abdb3e3e36f7 // indirect
 	github.com/getlantern/golog v0.0.0-20190830074920-4ef2e798c2d7 // indirect
@@ -25,7 +26,6 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/josephspurrier/goversioninfo v1.4.1 // indirect
-	github.com/ncruces/zenity v0.10.14 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/pink-tools/pink-otel v1.8.1 // indirect
 	github.com/randall77/makefat v0.0.0-20210315173500-7ddd0e42c844 // indirect
