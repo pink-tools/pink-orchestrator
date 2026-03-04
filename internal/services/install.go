@@ -21,7 +21,15 @@ import (
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 )
 
+// SetupFunc renders a form from specJSON and returns (values, true) on save,
+// or (nil, false) on cancel.
+type SetupFunc func(specJSON []byte) (map[string]any, bool)
+
 func Install(name string, progress func(string)) error {
+	return InstallWithSetup(name, progress, nil)
+}
+
+func InstallWithSetup(name string, progress func(string), setupFunc SetupFunc) error {
 	mu.Lock()
 	if installingServices[name] {
 		mu.Unlock()
@@ -93,18 +101,39 @@ func Install(name string, progress func(string)) error {
 		}
 	}
 
-	envFile := config.ServiceEnvFile(name)
-	if _, err := os.Stat(envFile); os.IsNotExist(err) {
-		var envContent strings.Builder
-		for _, ev := range svc.EnvVars {
-			if ev.Default != "" {
-				envContent.WriteString(fmt.Sprintf("%s=%s\n", ev.Name, ev.Default))
-			} else {
-				envContent.WriteString(fmt.Sprintf("# %s=\n", ev.Name))
+	// Run install --describe to check if service has a setup form
+	setupDone := false
+	if setupFunc != nil {
+		specJSON, err := describeInstallAction(binaryPath)
+		if err == nil && len(specJSON) > 0 {
+			values, ok := setupFunc(specJSON)
+			if !ok {
+				os.RemoveAll(core.ServiceDir(name))
+				return fmt.Errorf("installation cancelled")
 			}
+			if err := executeInstallAction(binaryPath, values); err != nil {
+				os.RemoveAll(core.ServiceDir(name))
+				return fmt.Errorf("install setup failed: %w", err)
+			}
+			setupDone = true
 		}
-		if err := os.WriteFile(envFile, []byte(envContent.String()), 0644); err != nil {
-			return fmt.Errorf("failed to write .env file: %w", err)
+	}
+
+	// Write .env from registry env_vars (skip if service wrote its own via install action)
+	if !setupDone {
+		envFile := config.ServiceEnvFile(name)
+		if _, err := os.Stat(envFile); os.IsNotExist(err) {
+			var envContent strings.Builder
+			for _, ev := range svc.EnvVars {
+				if ev.Default != "" {
+					envContent.WriteString(fmt.Sprintf("%s=%s\n", ev.Name, ev.Default))
+				} else {
+					envContent.WriteString(fmt.Sprintf("# %s=\n", ev.Name))
+				}
+			}
+			if err := os.WriteFile(envFile, []byte(envContent.String()), 0644); err != nil {
+				return fmt.Errorf("failed to write .env file: %w", err)
+			}
 		}
 	}
 
@@ -135,6 +164,28 @@ func Install(name string, progress func(string)) error {
 		progress(fmt.Sprintf("%s installed", name))
 	}
 
+	return nil
+}
+
+func describeInstallAction(binaryPath string) ([]byte, error) {
+	cmd := exec.Command(binaryPath, "install", "--describe")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func executeInstallAction(binaryPath string, values map[string]any) error {
+	data, err := json.Marshal(values)
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	cmd := exec.Command(binaryPath, "install", "--config", string(data))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s: %s", err, string(output))
+	}
 	return nil
 }
 

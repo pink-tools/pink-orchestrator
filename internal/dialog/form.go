@@ -75,6 +75,10 @@ h1 {
 	color: #aaa;
 	margin-bottom: 4px;
 }
+.field label .req {
+	color: #e94560;
+	margin-left: 2px;
+}
 .field .desc {
 	font-size: 11px;
 	color: #666;
@@ -204,6 +208,7 @@ button {
 }
 button:hover { opacity: 0.9; }
 .save { background: #e94560; color: white; }
+.save:disabled { opacity: 0.4; cursor: not-allowed; }
 .cancel { background: #0f3460; color: white; }
 </style>
 </head>
@@ -211,7 +216,7 @@ button:hover { opacity: 0.9; }
 <h1 id="title"></h1>
 <div class="fields" id="fields"></div>
 <div class="buttons">
-	<button class="save" onclick="save()">Save</button>
+	<button class="save" id="saveBtn" onclick="save()">Save</button>
 	<button class="cancel" onclick="onCancel()">Cancel</button>
 </div>
 <script>
@@ -228,6 +233,12 @@ fields.forEach(f => {
 
 	const label = document.createElement('label');
 	label.textContent = f.label || f.name;
+	if (f.required) {
+		const req = document.createElement('span');
+		req.className = 'req';
+		req.textContent = '*';
+		label.appendChild(req);
+	}
 	div.appendChild(label);
 
 	if (f.desc) {
@@ -290,7 +301,7 @@ fields.forEach(f => {
 		browseBtn.className = 'play-btn';
 		browseBtn.textContent = '\u2026';
 		browseBtn.addEventListener('click', async () => {
-			const path = await openFile();
+			const path = await openFile('.wav,.aiff,.aif,.mp3,.ogg,.flac');
 			if (path) customInput.value = path;
 		});
 
@@ -391,8 +402,29 @@ fields.forEach(f => {
 		btn.textContent = val || 'Click to set hotkey';
 		btn.addEventListener('click', () => startHotkeyCapture(btn));
 		div.appendChild(btn);
+	} else if (type === 'file') {
+		const wrap = document.createElement('div');
+		wrap.className = 'sound-row';
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.dataset.name = f.name;
+		input.value = val;
+		input.placeholder = 'Select file...';
+		input.style.flex = '1';
+		const browseBtn = document.createElement('button');
+		browseBtn.type = 'button';
+		browseBtn.className = 'play-btn';
+		browseBtn.textContent = '\u2026';
+		browseBtn.addEventListener('click', async () => {
+			const exts = (f.extensions || []).join(',');
+			const path = await openFile(exts);
+			if (path) { input.value = path; input.dispatchEvent(new Event('input', {bubbles:true})); }
+		});
+		wrap.appendChild(input);
+		wrap.appendChild(browseBtn);
+		div.appendChild(wrap);
 	} else {
-		// text, url, file
+		// text, url
 		const input = document.createElement('input');
 		input.type = 'text';
 		input.dataset.name = f.name;
@@ -402,6 +434,29 @@ fields.forEach(f => {
 
 	container.appendChild(div);
 });
+
+const requiredFields = fields.filter(f => f.required);
+const saveBtn = document.getElementById('saveBtn');
+
+function checkRequired() {
+	const valid = requiredFields.every(f => {
+		const type = f.type || 'text';
+		if (type === 'hotkey') {
+			const el = document.querySelector('.hotkey-btn[data-name="' + f.name + '"]');
+			return el && el.dataset.value;
+		}
+		if (type === 'confirm') return true;
+		const el = document.querySelector('[data-name="' + f.name + '"]');
+		return el && el.value.trim() !== '';
+	});
+	saveBtn.disabled = !valid;
+}
+
+if (requiredFields.length > 0) {
+	checkRequired();
+	container.addEventListener('input', checkRequired);
+	container.addEventListener('change', checkRequired);
+}
 
 function startHotkeyCapture(btn) {
 	btn.classList.add('capturing');

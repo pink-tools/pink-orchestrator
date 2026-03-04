@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/ncruces/zenity"
 	"github.com/pink-tools/pink-orchestrator/internal/player"
@@ -55,8 +56,8 @@ func FormMain() {
 		}
 	})
 
-	w.Bind("openFile", func() string {
-		return openFileDialog()
+	w.Bind("openFile", func(extensions string) string {
+		return openFileDialog(extensions)
 	})
 
 	w.SetHtml(formHTML(specJSON))
@@ -68,11 +69,21 @@ func FormMain() {
 	}
 }
 
-func openFileDialog() string {
-	path, err := zenity.SelectFile(
-		zenity.Title("Choose sound file"),
-		zenity.FileFilters{{Name: "Audio files", Patterns: []string{"*.wav", "*.aiff", "*.aif", "*.mp3", "*.ogg", "*.flac"}}},
-	)
+func openFileDialog(extensions string) string {
+	opts := []zenity.Option{zenity.Title("Choose file")}
+	if extensions != "" {
+		var patterns []string
+		for _, ext := range strings.Split(extensions, ",") {
+			ext = strings.TrimSpace(ext)
+			if ext != "" {
+				patterns = append(patterns, "*"+ext)
+			}
+		}
+		if len(patterns) > 0 {
+			opts = append(opts, zenity.FileFilters{{Name: "Files", Patterns: patterns}})
+		}
+	}
+	path, err := zenity.SelectFile(opts...)
 	if err != nil {
 		return ""
 	}

@@ -269,7 +269,7 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 
 	if services.IsInstalled(name) {
 		for _, a := range services.GetActions(name) {
-			item := sm.menuItem.AddSubMenuItem(a.Label, a.Desc)
+			item := sm.menuItem.AddSubMenuItem(a.Label, "")
 			sm.actions = append(sm.actions, actionItem{name: a.Name, menuItem: item})
 			go func(actionName string) {
 				for range item.ClickedCh {
@@ -305,9 +305,11 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 		for range sm.mInstall.ClickedCh {
 			go func() {
 				log.Info(context.Background(), "installing", log.Attr{K: "service", V: name})
-				services.Install(name, func(msg string) {
+				services.InstallWithSetup(name, func(msg string) {
 					log.Info(context.Background(), msg, log.Attr{K: "service", V: name})
 					services.SetLastStatus(name, msg)
+				}, func(specJSON []byte) (map[string]any, bool) {
+					return dialog.ShowForm(specJSON)
 				})
 			}()
 		}
