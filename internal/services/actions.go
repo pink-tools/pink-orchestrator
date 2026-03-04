@@ -44,7 +44,15 @@ func GetActions(name string) []Action {
 	if err := json.Unmarshal(output, &actions); err != nil {
 		return nil
 	}
-	return actions
+
+	// Filter out "install" — it's handled by the orchestrator's own install flow
+	filtered := actions[:0]
+	for _, a := range actions {
+		if a.Name != "install" {
+			filtered = append(filtered, a)
+		}
+	}
+	return filtered
 }
 
 // DescribeAction runs {binary} {action} --describe and returns the raw JSON FormSpec.
