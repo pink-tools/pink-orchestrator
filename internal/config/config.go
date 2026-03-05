@@ -24,10 +24,6 @@ func Port() int {
 	return DefaultPort
 }
 
-func HomeDir() string {
-	return core.HomeDir()
-}
-
 func OrchestratorDir() string {
 	return filepath.Join(core.PinkToolsDir(), "pink-orchestrator")
 }
@@ -77,9 +73,15 @@ func EnsureDirs() error {
 	return nil
 }
 
+// legacyBaseDir returns the old base directory (parent of home).
+// Only used for migrating away from the old layout.
+func legacyBaseDir() string {
+	return filepath.Dir(core.HomeDir())
+}
+
 // MigrateStateDir moves state files from old /Users/.pink-orchestrator/ to new location.
 func MigrateStateDir() {
-	oldDir := filepath.Join(core.BaseDir(), ".pink-orchestrator")
+	oldDir := filepath.Join(legacyBaseDir(), ".pink-orchestrator")
 	newDir := OrchestratorDir()
 	if oldDir == newDir {
 		return
@@ -103,12 +105,12 @@ func MigrateStateDir() {
 
 // AgentClaudeDir returns agent's .claude directory (~/pink-tools/.claude/).
 func AgentClaudeDir() string {
-	return filepath.Join(HomeDir(), "pink-tools", ".claude")
+	return filepath.Join(core.PinkToolsDir(), ".claude")
 }
 
 // AgentClaudeServiceDir returns agent's per-service .claude directory (~/pink-tools/<name>/.claude/).
 func AgentClaudeServiceDir(name string) string {
-	return filepath.Join(HomeDir(), "pink-tools", name, ".claude")
+	return filepath.Join(core.PinkToolsDir(), name, ".claude")
 }
 
 // AgentClaudeServiceMd returns path to service CLAUDE.md.
@@ -123,9 +125,36 @@ func AgentClaudeProjectsMd() string {
 
 // MigrateClaudeDir removes old /Users/.claude/ directory if it exists.
 func MigrateClaudeDir() {
-	oldDir := filepath.Join(core.BaseDir(), ".claude")
+	oldDir := filepath.Join(legacyBaseDir(), ".claude")
 	if _, err := os.Stat(oldDir); err != nil {
 		return
+	}
+	os.RemoveAll(oldDir)
+}
+
+// MigratePinkToolsDir moves services from old /Users/pink-tools/ to ~/pink-tools/.
+func MigratePinkToolsDir() {
+	oldDir := filepath.Join(legacyBaseDir(), "pink-tools")
+	newDir := core.PinkToolsDir()
+	if oldDir == newDir {
+		return
+	}
+	info, err := os.Stat(oldDir)
+	if err != nil || !info.IsDir() {
+		return
+	}
+	os.MkdirAll(newDir, 0755)
+	entries, err := os.ReadDir(oldDir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		old := filepath.Join(oldDir, e.Name())
+		dst := filepath.Join(newDir, e.Name())
+		if _, err := os.Stat(dst); err == nil {
+			continue // already exists in new location
+		}
+		os.Rename(old, dst)
 	}
 	os.RemoveAll(oldDir)
 }

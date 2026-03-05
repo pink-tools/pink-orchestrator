@@ -93,6 +93,7 @@ func main() {
 		log.Error(context.Background(), "failed to create directories", log.Attr{K: "error", V: err.Error()})
 		os.Exit(1)
 	}
+	config.MigratePinkToolsDir()
 	config.MigrateStateDir()
 	config.MigrateClaudeDir()
 

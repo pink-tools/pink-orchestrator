@@ -217,9 +217,7 @@ func chownServiceDir(name string) {
 	})
 
 	// Chown agent claude dir (~/pink-tools/.claude/)
-	home := config.HomeDir()
-	claudeDir := filepath.Join(home, "pink-tools", ".claude")
-	filepath.Walk(claudeDir, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(config.AgentClaudeDir(), func(path string, info os.FileInfo, err error) error {
 		if err == nil {
 			os.Chown(path, uid, gid)
 		}
@@ -227,8 +225,7 @@ func chownServiceDir(name string) {
 	})
 
 	// Chown service claude dir (~/pink-tools/<name>/.claude/)
-	svcClaudeDir := filepath.Join(home, "pink-tools", name, ".claude")
-	filepath.Walk(svcClaudeDir, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(config.AgentClaudeServiceDir(name), func(path string, info os.FileInfo, err error) error {
 		if err == nil {
 			os.Chown(path, uid, gid)
 		}
