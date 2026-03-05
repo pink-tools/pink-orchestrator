@@ -305,7 +305,27 @@ func Uninstall(name string) error {
 		return fmt.Errorf("failed to stop service: %w", err)
 	}
 
+	os.RemoveAll(config.AgentClaudeServiceDir(name))
+	removeFromProjectsMd(name)
+
 	return os.Remove(config.ServiceBinary(name))
+}
+
+func removeFromProjectsMd(name string) {
+	projectsFile := config.AgentClaudeProjectsMd()
+	data, err := os.ReadFile(projectsFile)
+	if err != nil {
+		return
+	}
+	refLine := fmt.Sprintf("@../%s/.claude/CLAUDE.md", name)
+	lines := strings.Split(string(data), "\n")
+	var out []string
+	for _, line := range lines {
+		if strings.TrimSpace(line) != refLine {
+			out = append(out, line)
+		}
+	}
+	os.WriteFile(projectsFile, []byte(strings.Join(out, "\n")), 0644)
 }
 
 func Check(name string) (string, error) {
