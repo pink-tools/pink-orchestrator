@@ -107,15 +107,13 @@ func InstallWithSetup(name string, progress func(string), setupFunc SetupFunc) e
 		specJSON, err := describeInstallAction(binaryPath)
 		if err == nil && len(specJSON) > 0 {
 			values, ok := setupFunc(specJSON)
-			if !ok {
-				os.RemoveAll(core.ServiceDir(name))
-				return fmt.Errorf("installation cancelled")
+			if ok {
+				if err := executeInstallAction(binaryPath, values); err != nil {
+					os.RemoveAll(core.ServiceDir(name))
+					return fmt.Errorf("install setup failed: %w", err)
+				}
+				setupDone = true
 			}
-			if err := executeInstallAction(binaryPath, values); err != nil {
-				os.RemoveAll(core.ServiceDir(name))
-				return fmt.Errorf("install setup failed: %w", err)
-			}
-			setupDone = true
 		}
 	}
 
