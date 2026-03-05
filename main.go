@@ -94,6 +94,7 @@ func main() {
 		os.Exit(1)
 	}
 	config.MigrateStateDir()
+	config.MigrateClaudeDir()
 
 	if err := services.AcquireLock(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

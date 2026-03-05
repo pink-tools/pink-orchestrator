@@ -215,6 +215,25 @@ func chownServiceDir(name string) {
 		}
 		return nil
 	})
+
+	// Chown agent claude dir (~/pink-tools/.claude/)
+	home := config.HomeDir()
+	claudeDir := filepath.Join(home, "pink-tools", ".claude")
+	filepath.Walk(claudeDir, func(path string, info os.FileInfo, err error) error {
+		if err == nil {
+			os.Chown(path, uid, gid)
+		}
+		return nil
+	})
+
+	// Chown service claude dir (~/pink-tools/<name>/.claude/)
+	svcClaudeDir := filepath.Join(home, "pink-tools", name, ".claude")
+	filepath.Walk(svcClaudeDir, func(path string, info os.FileInfo, err error) error {
+		if err == nil {
+			os.Chown(path, uid, gid)
+		}
+		return nil
+	})
 }
 
 // verifyBinary runs --version to check binary is executable and not corrupted
@@ -512,6 +531,15 @@ func userCommand(name string, args ...string) *exec.Cmd {
 	return exec.Command(name, args...)
 }
 
+func replaceTemplateVars(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	result := strings.ReplaceAll(string(data), "{{PINK_TOOLS}}", strings.TrimSuffix(core.PinkToolsDir(), string(filepath.Separator)))
+	os.WriteFile(path, []byte(result), 0644)
+}
+
 func installClaudeMd(svc *registry.Service, progress func(string)) {
 	if svc.ClaudeRoot {
 		installClaudeRoot(svc, progress)
@@ -535,6 +563,7 @@ func installClaudeRoot(svc *registry.Service, progress func(string)) {
 			continue
 		}
 		downloadFile(baseURL+"/"+file, destPath, progress)
+		replaceTemplateVars(destPath)
 	}
 
 	// Install orchestrator docs (always bundled with agent)
@@ -554,6 +583,7 @@ func installOrchestratorDocs(progress func(string)) {
 
 	url := "https://raw.githubusercontent.com/pink-tools/pink-orchestrator/main/.claude/CLAUDE.md"
 	downloadFile(url, dest, progress)
+	replaceTemplateVars(dest)
 }
 
 func installClaudeService(svc *registry.Service, progress func(string)) {
@@ -568,6 +598,7 @@ func installClaudeService(svc *registry.Service, progress func(string)) {
 	if err := downloadFile(claudeMdURL, claudeMdPath, progress); err != nil {
 		return
 	}
+	replaceTemplateVars(claudeMdPath)
 
 	updateProjectsMd(svc.Name)
 }
@@ -629,7 +660,7 @@ func runPostInstall(binaryPath string, progress func(string)) error {
 
 func updateProjectsMd(name string) {
 	projectsFile := config.AgentClaudeProjectsMd()
-	refLine := fmt.Sprintf("@pink-tools/%s/CLAUDE.md", name)
+	refLine := fmt.Sprintf("@../%s/.claude/CLAUDE.md", name)
 
 	content, err := os.ReadFile(projectsFile)
 	if err != nil {

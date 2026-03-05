@@ -25,8 +25,7 @@ func Port() int {
 }
 
 func HomeDir() string {
-	home, _ := os.UserHomeDir()
-	return home
+	return core.HomeDir()
 }
 
 func OrchestratorDir() string {
@@ -102,19 +101,14 @@ func MigrateStateDir() {
 	os.Remove(oldDir)
 }
 
-// AgentClaudeDir returns agent's .claude directory (/Users/.claude).
+// AgentClaudeDir returns agent's .claude directory (~/pink-tools/.claude/).
 func AgentClaudeDir() string {
-	return filepath.Join(core.BaseDir(), ".claude")
+	return filepath.Join(HomeDir(), "pink-tools", ".claude")
 }
 
-// AgentClaudePinkToolsDir returns agent's pink-tools directory.
-func AgentClaudePinkToolsDir() string {
-	return filepath.Join(AgentClaudeDir(), "pink-tools")
-}
-
-// AgentClaudeServiceDir returns agent's service directory.
+// AgentClaudeServiceDir returns agent's per-service .claude directory (~/pink-tools/<name>/.claude/).
 func AgentClaudeServiceDir(name string) string {
-	return filepath.Join(AgentClaudePinkToolsDir(), name)
+	return filepath.Join(HomeDir(), "pink-tools", name, ".claude")
 }
 
 // AgentClaudeServiceMd returns path to service CLAUDE.md.
@@ -125,5 +119,14 @@ func AgentClaudeServiceMd(name string) string {
 // AgentClaudeProjectsMd returns path to agent's PROJECTS.md.
 func AgentClaudeProjectsMd() string {
 	return filepath.Join(AgentClaudeDir(), "PROJECTS.md")
+}
+
+// MigrateClaudeDir removes old /Users/.claude/ directory if it exists.
+func MigrateClaudeDir() {
+	oldDir := filepath.Join(core.BaseDir(), ".claude")
+	if _, err := os.Stat(oldDir); err != nil {
+		return
+	}
+	os.RemoveAll(oldDir)
 }
 
