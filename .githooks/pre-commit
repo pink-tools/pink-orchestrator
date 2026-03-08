@@ -12,10 +12,13 @@ git diff --cached --name-only | grep -q 'context.md' && exit 0
 
 echo "ERROR: Go source staged but context.md is not"
 echo ""
+echo "context.md is the embedded agent context (replaces .claude/CLAUDE.md)."
+echo "If behavior or CLI changed, update context.md and --help text too."
+echo ""
 echo "Staged files:"
 echo "$GO_STAGED"
 echo ""
 echo "Either:"
-echo "  1. Update context.md and stage it"
+echo "  1. Update context.md (and --help), then stage"
 echo "  2. SKIP_DOCS=1 git commit  (if docs don't need updating)"
 exit 1
