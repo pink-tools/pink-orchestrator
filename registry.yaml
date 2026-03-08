@@ -12,7 +12,7 @@ services:
   - name: pink-whisper
     repo: pink-tools/pink-whisper
     type: daemon
-    post_install: true
+    has_setup: true
 
   - name: pink-voice
     repo: pink-tools/pink-voice
@@ -38,6 +38,11 @@ services:
     repo: pink-tools/pink-agent
     type: daemon
     claude_root: true
+    env_vars:
+      - name: TELEGRAM_BOT_TOKEN
+        required: true
+      - name: TELEGRAM_GROUP_ID
+        required: true
     system_deps:
       - name: git
         winget: Git.Git

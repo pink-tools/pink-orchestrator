@@ -23,11 +23,13 @@ type actionItem struct {
 type serviceMenu struct {
 	name       string
 	isDaemon   bool
+	hasSetup   bool
 	menuItem   *systray.MenuItem
 	mStatus    *systray.MenuItem
 	mError     *systray.MenuItem
 	mUpdate    *systray.MenuItem
 	mInstall   *systray.MenuItem
+	mSetup     *systray.MenuItem
 	mCheck     *systray.MenuItem
 	mStart     *systray.MenuItem
 	mStop      *systray.MenuItem
@@ -212,6 +214,7 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 		sm.mUpdate.Hide()
 		sm.mInstall.Show()
 		sm.mInstall.Disable()
+		sm.mSetup.Hide()
 		sm.mCheck.Hide()
 		sm.mStart.Hide()
 		sm.mStop.Hide()
@@ -222,6 +225,7 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 		sm.mUpdate.Hide()
 		sm.mInstall.Show()
 		sm.mInstall.Enable()
+		sm.mSetup.Hide()
 		sm.mCheck.Hide()
 		sm.mStart.Hide()
 		sm.mStop.Hide()
@@ -234,6 +238,11 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 		sm.mUpdate.Show()
 		sm.mEnv.Show()
 		sm.mUninstall.Show()
+		if sm.hasSetup && services.NeedsSetup(sm.name) {
+			sm.mSetup.Show()
+		} else {
+			sm.mSetup.Hide()
+		}
 		if status.Status == services.StatusRunning {
 			sm.mStart.Hide()
 			sm.mStop.Show()
@@ -245,6 +254,7 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 		}
 	} else {
 		sm.mInstall.Hide()
+		sm.mSetup.Hide()
 		sm.mCheck.Show()
 		sm.mUpdate.Show()
 		sm.mStart.Hide()
@@ -256,11 +266,12 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 }
 
 func (t *Tray) addServiceMenu(name string) *serviceMenu {
-	sm := &serviceMenu{name: name, isDaemon: registry.IsDaemon(name)}
+	sm := &serviceMenu{name: name, isDaemon: registry.IsDaemon(name), hasSetup: services.HasSetup(name)}
 
 	sm.menuItem = systray.AddMenuItem(name, "")
 
 	sm.mInstall = sm.menuItem.AddSubMenuItem("Install", "")
+	sm.mSetup = sm.menuItem.AddSubMenuItem("Setup", "")
 	sm.mCheck = sm.menuItem.AddSubMenuItem("Check", "")
 	sm.mStart = sm.menuItem.AddSubMenuItem("Start", "")
 	sm.mStop = sm.menuItem.AddSubMenuItem("Stop", "")
@@ -311,6 +322,19 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 				}, func(specJSON []byte) (map[string]any, bool) {
 					return dialog.ShowForm(specJSON)
 				})
+			}()
+		}
+	}()
+
+	go func() {
+		for range sm.mSetup.ClickedCh {
+			go func() {
+				log.Info(context.Background(), "running setup", log.Attr{K: "service", V: name})
+				services.SetLastStatus(name, "Running setup...")
+				if err := services.RunSetupTerminal(name); err != nil {
+					log.Error(context.Background(), "setup failed", log.Attr{K: "service", V: name}, log.Attr{K: "error", V: err.Error()})
+					services.SetLastStatus(name, fmt.Sprintf("Setup failed: %s", err))
+				}
 			}()
 		}
 	}()

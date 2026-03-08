@@ -1,7 +1,6 @@
 package services
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -141,15 +140,6 @@ func InstallWithSetup(name string, progress func(string), setupFunc SetupFunc) e
 	if err := verifyBinary(binaryPath); err != nil {
 		log.Error(context.Background(), "binary verification failed", log.Attr{K: "service", V: name}, log.Attr{K: "binary", V: binaryPath}, log.Attr{K: "error", V: err.Error()})
 		return fmt.Errorf("binary verification failed: %w", err)
-	}
-
-	// Run post-install if configured
-	if svc.PostInstall {
-		progress(fmt.Sprintf("Running %s install...", name))
-		if err := runPostInstall(binaryPath, progress); err != nil {
-			log.Warn(context.Background(), "post-install skipped", log.Attr{K: "service", V: name}, log.Attr{K: "error", V: err.Error()})
-			// Don't fail - service is installed, post-install is optional
-		}
 	}
 
 	// Chown service directory to real user (orchestrator runs as root)
@@ -566,23 +556,73 @@ func installClaudeMd(svc *registry.Service, progress func(string)) {
 func installClaudeRoot(svc *registry.Service, progress func(string)) {
 	claudeDir := config.AgentClaudeDir()
 	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		log.Error(context.Background(), "create claude dir failed", log.Attr{K: "error", V: err.Error()})
 		return
 	}
 
-	files := []string{"CLAUDE.md", "CODE.md", "PROJECTS.md", "MCP.md"}
 	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/main/.claude", svc.Repo)
 
-	for _, file := range files {
+	// Always overwrite CLAUDE.md, CODE.md, MCP.md
+	for _, file := range []string{"CLAUDE.md", "CODE.md", "MCP.md"} {
 		destPath := filepath.Join(claudeDir, file)
-		if _, err := os.Stat(destPath); err == nil {
+		if err := downloadFile(baseURL+"/"+file, destPath, progress); err != nil {
+			log.Error(context.Background(), "download claude file failed", log.Attr{K: "file", V: file}, log.Attr{K: "error", V: err.Error()})
 			continue
 		}
-		downloadFile(baseURL+"/"+file, destPath, progress)
 		replaceTemplateVars(destPath)
 	}
 
+	// PROJECTS.md: download fresh template, then merge with discovered services
+	installProjectsMd(svc.Repo, progress)
+
 	// Install orchestrator docs (always bundled with agent)
 	installOrchestratorDocs(progress)
+}
+
+// installProjectsMd downloads fresh PROJECTS.md template, then scans for installed
+// services with .claude/CLAUDE.md and ensures they're referenced.
+func installProjectsMd(repo string, progress func(string)) {
+	destPath := config.AgentClaudeProjectsMd()
+	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/main/.claude/PROJECTS.md", repo)
+
+	if err := downloadFile(url, destPath, progress); err != nil {
+		log.Error(context.Background(), "download PROJECTS.md failed", log.Attr{K: "error", V: err.Error()})
+		return
+	}
+	replaceTemplateVars(destPath)
+
+	// Scan ~/pink-tools/*/.claude/CLAUDE.md for installed services
+	entries, err := os.ReadDir(core.PinkToolsDir())
+	if err != nil {
+		return
+	}
+
+	content, err := os.ReadFile(destPath)
+	if err != nil {
+		return
+	}
+	text := string(content)
+
+	var added bool
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		claudeMd := filepath.Join(core.PinkToolsDir(), name, ".claude", "CLAUDE.md")
+		if _, err := os.Stat(claudeMd); err != nil {
+			continue
+		}
+		refLine := fmt.Sprintf("@../%s/.claude/CLAUDE.md", name)
+		if !strings.Contains(text, refLine) {
+			text += refLine + "\n"
+			added = true
+		}
+	}
+
+	if added {
+		os.WriteFile(destPath, []byte(text), 0644)
+	}
 }
 
 func installOrchestratorDocs(progress func(string)) {
@@ -592,18 +632,18 @@ func installOrchestratorDocs(progress func(string)) {
 	}
 
 	dest := config.AgentClaudeServiceMd("pink-orchestrator")
-	if _, err := os.Stat(dest); err == nil {
+	url := "https://raw.githubusercontent.com/pink-tools/pink-orchestrator/main/.claude/CLAUDE.md"
+	if err := downloadFile(url, dest, progress); err != nil {
+		log.Error(context.Background(), "download orchestrator CLAUDE.md failed", log.Attr{K: "error", V: err.Error()})
 		return
 	}
-
-	url := "https://raw.githubusercontent.com/pink-tools/pink-orchestrator/main/.claude/CLAUDE.md"
-	downloadFile(url, dest, progress)
 	replaceTemplateVars(dest)
 }
 
 func installClaudeService(svc *registry.Service, progress func(string)) {
 	claudeDir := config.AgentClaudeServiceDir(svc.Name)
 	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		log.Error(context.Background(), "create service claude dir failed", log.Attr{K: "service", V: svc.Name}, log.Attr{K: "error", V: err.Error()})
 		return
 	}
 
@@ -611,6 +651,7 @@ func installClaudeService(svc *registry.Service, progress func(string)) {
 	claudeMdPath := config.AgentClaudeServiceMd(svc.Name)
 
 	if err := downloadFile(claudeMdURL, claudeMdPath, progress); err != nil {
+		log.Error(context.Background(), "download service CLAUDE.md failed", log.Attr{K: "service", V: svc.Name}, log.Attr{K: "error", V: err.Error()})
 		return
 	}
 	replaceTemplateVars(claudeMdPath)
@@ -618,59 +659,65 @@ func installClaudeService(svc *registry.Service, progress func(string)) {
 	updateProjectsMd(svc.Name)
 }
 
-func runPostInstall(binaryPath string, progress func(string)) error {
-	// Run install --check to see what's needed
-	checkCmd := exec.Command(binaryPath, "install", "--check")
-	checkOutput, err := checkCmd.Output()
-	if err != nil {
-		return fmt.Errorf("install --check failed: %w", err)
+// NeedsSetup checks if a service with has_setup requires setup.
+// Returns true if install --check reports ready: false.
+func NeedsSetup(name string) bool {
+	svc, err := registry.GetService(name)
+	if err != nil || !svc.HasSetup {
+		return false
+	}
+	if !IsInstalled(name) {
+		return false
 	}
 
-	// Parse JSON response
+	binary := config.ServiceBinary(name)
+	cmd := exec.Command(binary, "install", "--check")
+	output, err := cmd.Output()
+	if err != nil {
+		return true // can't check → assume needs setup
+	}
+
 	var info struct {
-		Ready       bool `json:"ready"`
-		NeedConfirm bool `json:"need_confirm"`
+		Ready bool `json:"ready"`
 	}
-	if err := json.Unmarshal(checkOutput, &info); err != nil {
-		return fmt.Errorf("parse install check: %w", err)
+	if err := json.Unmarshal(output, &info); err != nil {
+		return true
 	}
+	return !info.Ready
+}
 
-	if info.Ready {
-		progress("Already installed")
-		return nil
-	}
-
-	// If needs confirmation (CPU), skip installation (use remote server instead)
-	// TODO: Show dialog when WebView is available
-	if info.NeedConfirm {
-		progress("Skipped (use remote server)")
-		return nil
-	}
-
-	// Run install --yes, pipe stdout to progress for tray visibility
-	progress("Installing dependencies...")
-	installCmd := exec.Command(binaryPath, "install", "--yes")
-	installCmd.Stderr = os.Stderr
-
-	stdout, err := installCmd.StdoutPipe()
+// HasSetup returns whether a service has the has_setup flag.
+func HasSetup(name string) bool {
+	svc, err := registry.GetService(name)
 	if err != nil {
-		return fmt.Errorf("stdout pipe: %w", err)
+		return false
 	}
+	return svc.HasSetup
+}
 
-	if err := installCmd.Start(); err != nil {
-		return fmt.Errorf("install start: %w", err)
+// RunSetupTerminal opens a terminal window running the service's install command.
+func RunSetupTerminal(name string) error {
+	binary := config.ServiceBinary(name)
+
+	switch runtime.GOOS {
+	case "darwin":
+		// Write a temp script that runs the install command
+		script := fmt.Sprintf("#!/bin/bash\n%s install\necho\necho 'Setup complete. Press any key to close.'\nread -n1\n", binary)
+		tmpFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s-setup.sh", name))
+		if err := os.WriteFile(tmpFile, []byte(script), 0755); err != nil {
+			return fmt.Errorf("write setup script: %w", err)
+		}
+		return exec.Command("open", "-a", "Terminal.app", tmpFile).Start()
+
+	case "linux":
+		return exec.Command("x-terminal-emulator", "-e", binary, "install").Start()
+
+	case "windows":
+		return exec.Command("cmd", "/c", "start", "cmd", "/k", binary, "install").Start()
+
+	default:
+		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
-
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		progress(scanner.Text())
-	}
-
-	if err := installCmd.Wait(); err != nil {
-		return fmt.Errorf("install failed: %w", err)
-	}
-
-	return nil
 }
 
 func updateProjectsMd(name string) {
