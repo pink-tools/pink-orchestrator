@@ -134,8 +134,6 @@ func InstallWithSetup(name string, progress func(string), setupFunc SetupFunc) e
 		}
 	}
 
-	installClaudeMd(svc, progress)
-
 	// Verify binary works before saving version
 	if err := verifyBinary(binaryPath); err != nil {
 		log.Error(context.Background(), "binary verification failed", log.Attr{K: "service", V: name}, log.Attr{K: "binary", V: binaryPath}, log.Attr{K: "error", V: err.Error()})
@@ -204,21 +202,6 @@ func chownServiceDir(name string) {
 		return nil
 	})
 
-	// Chown agent claude dir (~/pink-tools/.claude/)
-	filepath.Walk(config.AgentClaudeDir(), func(path string, info os.FileInfo, err error) error {
-		if err == nil {
-			os.Chown(path, uid, gid)
-		}
-		return nil
-	})
-
-	// Chown service claude dir (~/pink-tools/<name>/.claude/)
-	filepath.Walk(config.AgentClaudeServiceDir(name), func(path string, info os.FileInfo, err error) error {
-		if err == nil {
-			os.Chown(path, uid, gid)
-		}
-		return nil
-	})
 }
 
 // verifyBinary runs --version to check binary is executable and not corrupted
@@ -293,27 +276,7 @@ func Uninstall(name string) error {
 		return fmt.Errorf("failed to stop service: %w", err)
 	}
 
-	os.RemoveAll(config.AgentClaudeServiceDir(name))
-	removeFromProjectsMd(name)
-
 	return os.Remove(config.ServiceBinary(name))
-}
-
-func removeFromProjectsMd(name string) {
-	projectsFile := config.AgentClaudeProjectsMd()
-	data, err := os.ReadFile(projectsFile)
-	if err != nil {
-		return
-	}
-	refLine := fmt.Sprintf("@../%s/.claude/CLAUDE.md", name)
-	lines := strings.Split(string(data), "\n")
-	var out []string
-	for _, line := range lines {
-		if strings.TrimSpace(line) != refLine {
-			out = append(out, line)
-		}
-	}
-	os.WriteFile(projectsFile, []byte(strings.Join(out, "\n")), 0644)
 }
 
 func Check(name string) (string, error) {
@@ -536,128 +499,6 @@ func userCommand(name string, args ...string) *exec.Cmd {
 	return exec.Command(name, args...)
 }
 
-func replaceTemplateVars(path string) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return
-	}
-	result := strings.ReplaceAll(string(data), "{{PINK_TOOLS}}", strings.TrimSuffix(core.PinkToolsDir(), string(filepath.Separator)))
-	os.WriteFile(path, []byte(result), 0644)
-}
-
-func installClaudeMd(svc *registry.Service, progress func(string)) {
-	if svc.ClaudeRoot {
-		installClaudeRoot(svc, progress)
-	} else {
-		installClaudeService(svc, progress)
-	}
-}
-
-func installClaudeRoot(svc *registry.Service, progress func(string)) {
-	claudeDir := config.AgentClaudeDir()
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
-		log.Error(context.Background(), "create claude dir failed", log.Attr{K: "error", V: err.Error()})
-		return
-	}
-
-	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/main/.claude", svc.Repo)
-
-	// Always overwrite CLAUDE.md, CODE.md, MCP.md
-	for _, file := range []string{"CLAUDE.md", "CODE.md", "MCP.md"} {
-		destPath := filepath.Join(claudeDir, file)
-		if err := downloadFile(baseURL+"/"+file, destPath, progress); err != nil {
-			log.Error(context.Background(), "download claude file failed", log.Attr{K: "file", V: file}, log.Attr{K: "error", V: err.Error()})
-			continue
-		}
-		replaceTemplateVars(destPath)
-	}
-
-	// PROJECTS.md: download fresh template, then merge with discovered services
-	installProjectsMd(svc.Repo, progress)
-
-	// Install orchestrator docs (always bundled with agent)
-	installOrchestratorDocs(progress)
-}
-
-// installProjectsMd downloads fresh PROJECTS.md template, then scans for installed
-// services with .claude/CLAUDE.md and ensures they're referenced.
-func installProjectsMd(repo string, progress func(string)) {
-	destPath := config.AgentClaudeProjectsMd()
-	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/main/.claude/PROJECTS.md", repo)
-
-	if err := downloadFile(url, destPath, progress); err != nil {
-		log.Error(context.Background(), "download PROJECTS.md failed", log.Attr{K: "error", V: err.Error()})
-		return
-	}
-	replaceTemplateVars(destPath)
-
-	// Scan ~/pink-tools/*/.claude/CLAUDE.md for installed services
-	entries, err := os.ReadDir(core.PinkToolsDir())
-	if err != nil {
-		return
-	}
-
-	content, err := os.ReadFile(destPath)
-	if err != nil {
-		return
-	}
-	text := string(content)
-
-	var added bool
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		claudeMd := filepath.Join(core.PinkToolsDir(), name, ".claude", "CLAUDE.md")
-		if _, err := os.Stat(claudeMd); err != nil {
-			continue
-		}
-		refLine := fmt.Sprintf("@../%s/.claude/CLAUDE.md", name)
-		if !strings.Contains(text, refLine) {
-			text += refLine + "\n"
-			added = true
-		}
-	}
-
-	if added {
-		os.WriteFile(destPath, []byte(text), 0644)
-	}
-}
-
-func installOrchestratorDocs(progress func(string)) {
-	claudeDir := config.AgentClaudeServiceDir("pink-orchestrator")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
-		return
-	}
-
-	dest := config.AgentClaudeServiceMd("pink-orchestrator")
-	url := "https://raw.githubusercontent.com/pink-tools/pink-orchestrator/main/.claude/CLAUDE.md"
-	if err := downloadFile(url, dest, progress); err != nil {
-		log.Error(context.Background(), "download orchestrator CLAUDE.md failed", log.Attr{K: "error", V: err.Error()})
-		return
-	}
-	replaceTemplateVars(dest)
-}
-
-func installClaudeService(svc *registry.Service, progress func(string)) {
-	claudeDir := config.AgentClaudeServiceDir(svc.Name)
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
-		log.Error(context.Background(), "create service claude dir failed", log.Attr{K: "service", V: svc.Name}, log.Attr{K: "error", V: err.Error()})
-		return
-	}
-
-	claudeMdURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/main/.claude/CLAUDE.md", svc.Repo)
-	claudeMdPath := config.AgentClaudeServiceMd(svc.Name)
-
-	if err := downloadFile(claudeMdURL, claudeMdPath, progress); err != nil {
-		log.Error(context.Background(), "download service CLAUDE.md failed", log.Attr{K: "service", V: svc.Name}, log.Attr{K: "error", V: err.Error()})
-		return
-	}
-	replaceTemplateVars(claudeMdPath)
-
-	updateProjectsMd(svc.Name)
-}
 
 // NeedsSetup checks if a service with has_setup requires setup.
 // Returns true if install --check reports ready: false.
@@ -720,27 +561,3 @@ func RunSetupTerminal(name string) error {
 	}
 }
 
-func updateProjectsMd(name string) {
-	projectsFile := config.AgentClaudeProjectsMd()
-	refLine := fmt.Sprintf("@../%s/.claude/CLAUDE.md", name)
-
-	content, err := os.ReadFile(projectsFile)
-	if err != nil {
-		content = []byte("# Installed Services\n\n")
-	}
-
-	if strings.Contains(string(content), refLine) {
-		return
-	}
-
-	f, err := os.OpenFile(projectsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-
-	if len(content) == 0 {
-		f.WriteString("# Installed Services\n\n")
-	}
-	f.WriteString(refLine + "\n")
-}

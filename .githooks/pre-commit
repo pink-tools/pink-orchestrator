@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Staged .go files (excluding tests)
+GO_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- '*.go' ':!*_test.go')
+[ -z "$GO_STAGED" ] && exit 0
+
+# OK if context.md is also staged
+git diff --cached --name-only | grep -q 'context.md' && exit 0
+
+# Escape hatch for refactoring / trivial changes
+[ -n "$SKIP_DOCS" ] && exit 0
+
+echo "ERROR: Go source staged but context.md is not"
+echo ""
+echo "Staged files:"
+echo "$GO_STAGED"
+echo ""
+echo "Either:"
+echo "  1. Update context.md and stage it"
+echo "  2. SKIP_DOCS=1 git commit  (if docs don't need updating)"
+exit 1

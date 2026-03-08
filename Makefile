@@ -6,3 +6,6 @@ build:
 
 install: build
 	cp pink-orchestrator $(INSTALL_DIR)/pink-orchestrator
+
+setup:
+	git config core.hooksPath .githooks

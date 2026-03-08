@@ -103,33 +103,61 @@ func MigrateStateDir() {
 	os.Remove(oldDir)
 }
 
-// AgentClaudeDir returns agent's .claude directory (~/pink-tools/.claude/).
-func AgentClaudeDir() string {
-	return filepath.Join(core.PinkToolsDir(), ".claude")
+// MigrateClaudeDirs removes all obsolete .claude/ directories from pink-tools locations.
+// NEVER touches ~/.claude/ — that's user's personal config.
+func MigrateClaudeDirs() {
+	// /Users/.claude/
+	os.RemoveAll(filepath.Join(legacyBaseDir(), ".claude"))
+
+	// ~/pink-tools/.claude/ and ~/pink-tools/*/.claude/
+	cleanClaudeDirs(core.PinkToolsDir())
+
+	// /Users/pink-tools/.claude/ and /Users/pink-tools/*/.claude/
+	oldPinkTools := filepath.Join(legacyBaseDir(), "pink-tools")
+	cleanClaudeDirs(oldPinkTools)
 }
 
-// AgentClaudeServiceDir returns agent's per-service .claude directory (~/pink-tools/<name>/.claude/).
-func AgentClaudeServiceDir(name string) string {
-	return filepath.Join(core.PinkToolsDir(), name, ".claude")
-}
-
-// AgentClaudeServiceMd returns path to service CLAUDE.md.
-func AgentClaudeServiceMd(name string) string {
-	return filepath.Join(AgentClaudeServiceDir(name), "CLAUDE.md")
-}
-
-// AgentClaudeProjectsMd returns path to agent's PROJECTS.md.
-func AgentClaudeProjectsMd() string {
-	return filepath.Join(AgentClaudeDir(), "PROJECTS.md")
-}
-
-// MigrateClaudeDir removes old /Users/.claude/ directory if it exists.
-func MigrateClaudeDir() {
-	oldDir := filepath.Join(legacyBaseDir(), ".claude")
-	if _, err := os.Stat(oldDir); err != nil {
+func cleanClaudeDirs(base string) {
+	if info, err := os.Stat(base); err != nil || !info.IsDir() {
 		return
 	}
-	os.RemoveAll(oldDir)
+	os.RemoveAll(filepath.Join(base, ".claude"))
+	entries, _ := os.ReadDir(base)
+	for _, e := range entries {
+		if e.IsDir() {
+			os.RemoveAll(filepath.Join(base, e.Name(), ".claude"))
+		}
+	}
+}
+
+// MigrateWhisperModel moves whisper model from old ServiceDir to AppDataDir.
+func MigrateWhisperModel() {
+	newDir := core.AppDataDir("pink-whisper")
+	modelName := "ggml-large-v3.bin"
+	newPath := filepath.Join(newDir, modelName)
+
+	if fileExists(newPath) {
+		return
+	}
+
+	oldPaths := []string{
+		filepath.Join(core.ServiceDir("pink-whisper"), modelName),
+		filepath.Join(filepath.Dir(core.HomeDir()), "pink-tools", "pink-whisper", modelName),
+	}
+
+	for _, old := range oldPaths {
+		if fileExists(old) {
+			os.MkdirAll(newDir, 0755)
+			if os.Rename(old, newPath) == nil {
+				return
+			}
+		}
+	}
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // MigratePinkToolsDir moves services from old /Users/pink-tools/ to ~/pink-tools/.

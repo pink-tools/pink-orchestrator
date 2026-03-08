@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,6 +21,9 @@ import (
 	"github.com/pink-tools/pink-orchestrator/internal/services"
 	"github.com/pink-tools/pink-orchestrator/internal/tray"
 )
+
+//go:embed context.md
+var claudeContext string
 
 var version = "dev"
 
@@ -67,6 +72,12 @@ func main() {
 		case "--update-all":
 			updateAllServices()
 			os.Exit(0)
+		case "--claude":
+			fmt.Println(claudeContext)
+			return
+		case "--services":
+			printInstalledServices()
+			return
 		}
 	}
 
@@ -95,7 +106,8 @@ func main() {
 	}
 	config.MigratePinkToolsDir()
 	config.MigrateStateDir()
-	config.MigrateClaudeDir()
+	config.MigrateClaudeDirs()
+	config.MigrateWhisperModel()
 
 	if err := services.AcquireLock(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -187,10 +199,28 @@ Usage:
   pink-orchestrator --service-restart <name>    Restart a service
   pink-orchestrator --service-stop <name>       Stop a service
   pink-orchestrator --service-start <name>      Start a service
+  pink-orchestrator --services                  List installed services (JSON)
+  pink-orchestrator --claude                    Print agent context
 
 Environment:
   ORCHESTRATOR_PORT    API port (default: %d)
 `, version, config.DefaultPort)
+}
+
+func printInstalledServices() {
+	svcs, err := registry.ListServices()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to list services: %v\n", err)
+		os.Exit(1)
+	}
+	var installed []string
+	for _, svc := range svcs {
+		if services.IsInstalled(svc.Name) {
+			installed = append(installed, svc.Name)
+		}
+	}
+	data, _ := json.Marshal(installed)
+	fmt.Println(string(data))
 }
 
 func updateAllServices() {

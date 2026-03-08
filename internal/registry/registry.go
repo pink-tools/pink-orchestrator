@@ -30,7 +30,6 @@ type Service struct {
 	SystemDeps   []SystemDep `yaml:"system_deps,omitempty"`
 	EnvVars      []EnvVar    `yaml:"env_vars,omitempty"`
 	ExtraAssets  []Asset     `yaml:"extra_assets,omitempty"`
-	ClaudeRoot   bool        `yaml:"claude_root,omitempty"`
 }
 
 type EnvVar struct {

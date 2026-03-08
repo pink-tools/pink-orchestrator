@@ -37,7 +37,6 @@ services:
   - name: pink-agent
     repo: pink-tools/pink-agent
     type: daemon
-    claude_root: true
     env_vars:
       - name: TELEGRAM_BOT_TOKEN
         required: true
