@@ -521,6 +521,16 @@ func (t *Tray) updateOrchestrator() {
 	}
 
 	if services.PendingRestart() {
-		systray.Quit()
+		// Cleanup and exec directly — on macOS systray.Quit() kills the
+		// process via [NSApp terminate:] so systray.Run() never returns.
+		// syscall.Exec replaces the process atomically: same PID, same terminal.
+		log.Info(context.Background(), "restarting after update")
+		services.SaveState()
+		services.Shutdown()
+		services.ReleaseLock()
+		if err := services.ExecRestart(); err != nil {
+			log.Error(context.Background(), "restart failed, quitting", log.Attr{K: "error", V: err.Error()})
+			systray.Quit()
+		}
 	}
 }
