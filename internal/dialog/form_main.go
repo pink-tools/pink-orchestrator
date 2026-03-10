@@ -64,7 +64,11 @@ func FormMain() {
 	w.Run()
 
 	if saved {
-		data, _ := json.Marshal(values)
+		data, err := json.Marshal(values)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "dialog: failed to marshal values: %v\n", err)
+			os.Exit(1)
+		}
 		os.Stdout.Write(data)
 	}
 }

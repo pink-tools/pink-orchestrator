@@ -29,9 +29,15 @@ func NewServer() (*Server, error) {
 
 	// Write port file for pink-core IPC discovery
 	portDir := core.ServiceDir("pink-orchestrator")
-	os.MkdirAll(portDir, 0755)
+	if err := os.MkdirAll(portDir, 0755); err != nil {
+		listener.Close()
+		return nil, fmt.Errorf("create service dir: %w", err)
+	}
 	portFile := filepath.Join(portDir, "pink-orchestrator.port")
-	os.WriteFile(portFile, []byte(fmt.Sprintf("%d", config.Port())), 0644)
+	if err := os.WriteFile(portFile, []byte(fmt.Sprintf("%d", config.Port())), 0644); err != nil {
+		listener.Close()
+		return nil, fmt.Errorf("write port file: %w", err)
+	}
 
 	return &Server{listener: listener, portFile: portFile}, nil
 }

@@ -104,11 +104,6 @@ func main() {
 		log.Error(context.Background(), "failed to create directories", log.Attr{K: "error", V: err.Error()})
 		os.Exit(1)
 	}
-	config.MigratePinkToolsDir()
-	config.MigrateStateDir()
-	config.MigrateClaudeDirs()
-	config.MigrateWhisperModel()
-
 	if err := services.AcquireLock(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
