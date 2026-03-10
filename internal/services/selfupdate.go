@@ -86,6 +86,7 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 			os.Remove(tmpBinary)
 			return fmt.Errorf("failed to start updater: %w", err)
 		}
+		pendingRestart = true
 		progress("Update complete. Restarting...")
 		return nil
 	}

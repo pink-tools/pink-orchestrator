@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/getlantern/systray"
@@ -53,6 +54,10 @@ func (t *Tray) Run() {
 	if services.PendingRestart() {
 		log.Info(context.Background(), "restarting after update")
 		services.ReleaseLock()
+		if runtime.GOOS == "windows" {
+			// Batch script handles starting the new binary after this process exits
+			os.Exit(0)
+		}
 		if err := services.ExecRestart(); err != nil {
 			log.Error(context.Background(), "restart failed", log.Attr{K: "error", V: err.Error()})
 		}
@@ -521,13 +526,14 @@ func (t *Tray) updateOrchestrator() {
 	}
 
 	if services.PendingRestart() {
-		// Cleanup and exec directly — on macOS systray.Quit() kills the
-		// process via [NSApp terminate:] so systray.Run() never returns.
-		// syscall.Exec replaces the process atomically: same PID, same terminal.
 		log.Info(context.Background(), "restarting after update")
 		services.SaveState()
 		services.Shutdown()
 		services.ReleaseLock()
+		if runtime.GOOS == "windows" {
+			// Batch script handles starting the new binary after this process exits
+			os.Exit(0)
+		}
 		if err := services.ExecRestart(); err != nil {
 			log.Error(context.Background(), "restart failed, quitting", log.Attr{K: "error", V: err.Error()})
 			systray.Quit()
