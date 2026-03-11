@@ -58,9 +58,8 @@ func (t *Tray) Run() {
 			// Batch script handles starting the new binary after this process exits
 			os.Exit(0)
 		}
-		if err := services.ExecRestart(); err != nil {
-			log.Error(context.Background(), "restart failed", log.Attr{K: "error", V: err.Error()})
-		}
+		// Exit code 42 signals the parent (sudo wrapper) to restart us
+		os.Exit(42)
 	}
 }
 
@@ -526,17 +525,8 @@ func (t *Tray) updateOrchestrator() {
 	}
 
 	if services.PendingRestart() {
-		log.Info(context.Background(), "restarting after update")
-		services.SaveState()
-		services.Shutdown()
-		services.ReleaseLock()
-		if runtime.GOOS == "windows" {
-			// Batch script handles starting the new binary after this process exits
-			os.Exit(0)
-		}
-		if err := services.ExecRestart(); err != nil {
-			log.Error(context.Background(), "restart failed, quitting", log.Attr{K: "error", V: err.Error()})
-			systray.Quit()
-		}
+		// systray.Quit triggers onExit (SaveState + Shutdown), then Run()
+		// detects PendingRestart and exits with code 42 for the parent to restart
+		systray.Quit()
 	}
 }

@@ -5,18 +5,7 @@ package services
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 )
-
-// ExecRestart starts a new instance of the binary and exits.
-func ExecRestart() error {
-	exe, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	exe, _ = filepath.EvalSymlinks(exe)
-	return execAndExit(exe)
-}
 
 // ExecPath starts the binary at path and exits.
 func ExecPath(path string) error {

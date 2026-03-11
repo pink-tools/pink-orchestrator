@@ -38,23 +38,11 @@ import "C"
 
 import (
 	"os"
-	"path/filepath"
 	"syscall"
 )
 
-// ExecRestart removes the tray icon and replaces the current process with a
-// new instance of the same binary. syscall.Exec preserves PID and terminal.
-func ExecRestart() error {
-	exe, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	exe, _ = filepath.EvalSymlinks(exe)
-	return execSyscall(exe, os.Args[1:]...)
-}
-
 // ExecPath removes the tray icon and replaces the current process with the
-// binary at path.
+// binary at path. Used by autoInstall before the tray starts.
 func ExecPath(path string) error {
 	return execSyscall(path, os.Args[1:]...)
 }
