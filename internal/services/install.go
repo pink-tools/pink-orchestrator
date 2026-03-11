@@ -543,7 +543,7 @@ func RunSetupTerminal(name string) error {
 	switch runtime.GOOS {
 	case "darwin":
 		// Write a temp script that runs the install command
-		script := fmt.Sprintf("#!/bin/bash\n%s install\necho\necho 'Setup complete. Press any key to close.'\nread -n1\n", binary)
+		script := fmt.Sprintf("#!/bin/bash\nsudo %s install\necho\necho 'Setup complete. Press any key to close.'\nread -n1\n", binary)
 		tmpFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s-setup.sh", name))
 		if err := os.WriteFile(tmpFile, []byte(script), 0755); err != nil {
 			return fmt.Errorf("write setup script: %w", err)
