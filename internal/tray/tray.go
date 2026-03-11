@@ -525,8 +525,12 @@ func (t *Tray) updateOrchestrator() {
 	}
 
 	if services.PendingRestart() {
-		// systray.Quit triggers onExit (SaveState + Shutdown), then Run()
-		// detects PendingRestart and exits with code 42 for the parent to restart
-		systray.Quit()
+		// Exit directly — systray.Quit() calls [NSApp terminate:] on macOS
+		// which invokes exit(0) before our code after systray.Run() can run.
+		log.Info(context.Background(), "restarting after update")
+		services.SaveState()
+		services.Shutdown()
+		services.ReleaseLock()
+		os.Exit(42)
 	}
 }
