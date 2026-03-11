@@ -76,7 +76,7 @@ func main() {
 			fmt.Println(claudeContext)
 			return
 		case "--services":
-			printInstalledServices()
+			printDownloadedServices()
 			return
 		}
 	}
@@ -196,12 +196,12 @@ Usage:
   pink-orchestrator                             Start in system tray
   pink-orchestrator --health                    Check health
   pink-orchestrator --version                   Show version
-  pink-orchestrator --update-all                Update all installed services
+  pink-orchestrator --update-all                Update all downloaded services
   pink-orchestrator --service-update <name>     Update a service
   pink-orchestrator --service-restart <name>    Restart a service
   pink-orchestrator --service-stop <name>       Stop a service
   pink-orchestrator --service-start <name>      Start a service
-  pink-orchestrator --services                  List installed services (JSON)
+  pink-orchestrator --services                  List downloaded services (JSON)
   pink-orchestrator --claude                    Print agent context
 
 Environment:
@@ -209,19 +209,19 @@ Environment:
 `, version, config.DefaultPort)
 }
 
-func printInstalledServices() {
+func printDownloadedServices() {
 	svcs, err := registry.ListServices()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to list services: %v\n", err)
 		os.Exit(1)
 	}
-	var installed []string
+	var downloaded []string
 	for _, svc := range svcs {
-		if services.IsInstalled(svc.Name) {
-			installed = append(installed, svc.Name)
+		if services.IsDownloaded(svc.Name) {
+			downloaded = append(downloaded, svc.Name)
 		}
 	}
-	data, _ := json.Marshal(installed)
+	data, _ := json.Marshal(downloaded)
 	fmt.Println(string(data))
 }
 
@@ -236,8 +236,8 @@ func updateAllServices() {
 
 	var updated, failed, skipped int
 	for _, svc := range svcs {
-		if !services.IsInstalled(svc.Name) {
-			fmt.Printf("⊘ %s (not installed)\n", svc.Name)
+		if !services.IsDownloaded(svc.Name) {
+			fmt.Printf("⊘ %s (not downloaded)\n", svc.Name)
 			skipped++
 			continue
 		}

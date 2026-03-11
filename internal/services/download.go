@@ -24,22 +24,22 @@ import (
 // or (nil, false) on cancel.
 type SetupFunc func(specJSON []byte) (map[string]any, bool)
 
-func Install(name string, progress func(string)) error {
-	return InstallWithSetup(name, progress, nil)
+func Download(name string, progress func(string)) error {
+	return DownloadWithSetup(name, progress, nil)
 }
 
-func InstallWithSetup(name string, progress func(string), setupFunc SetupFunc) error {
+func DownloadWithSetup(name string, progress func(string), setupFunc SetupFunc) error {
 	mu.Lock()
-	if installingServices[name] {
+	if downloadingServices[name] {
 		mu.Unlock()
-		return fmt.Errorf("already installing")
+		return fmt.Errorf("already downloading")
 	}
-	installingServices[name] = true
+	downloadingServices[name] = true
 	mu.Unlock()
 
 	defer func() {
 		mu.Lock()
-		delete(installingServices, name)
+		delete(downloadingServices, name)
 		mu.Unlock()
 		if onStatusUpdate != nil {
 			onStatusUpdate()
@@ -52,10 +52,10 @@ func InstallWithSetup(name string, progress func(string), setupFunc SetupFunc) e
 	}
 
 	for _, dep := range svc.Dependencies {
-		if !IsInstalled(dep) {
-			progress(fmt.Sprintf("Installing dependency: %s", dep))
-			if err := Install(dep, progress); err != nil {
-				return fmt.Errorf("failed to install dependency %s: %w", dep, err)
+		if !IsDownloaded(dep) {
+			progress(fmt.Sprintf("Downloading dependency: %s", dep))
+			if err := Download(dep, progress); err != nil {
+				return fmt.Errorf("failed to download dependency %s: %w", dep, err)
 			}
 		}
 	}
@@ -100,23 +100,23 @@ func InstallWithSetup(name string, progress func(string), setupFunc SetupFunc) e
 		}
 	}
 
-	// Run install --describe to check if service has a setup form
+	// Run setup --describe to check if service has a setup form
 	setupDone := false
 	if setupFunc != nil {
-		specJSON, err := describeInstallAction(binaryPath)
+		specJSON, err := describeSetupAction(binaryPath)
 		if err == nil && len(specJSON) > 0 {
 			values, ok := setupFunc(specJSON)
 			if ok {
-				if err := executeInstallAction(binaryPath, values); err != nil {
+				if err := executeSetupAction(binaryPath, values); err != nil {
 					os.RemoveAll(core.ServiceDir(name))
-					return fmt.Errorf("install setup failed: %w", err)
+					return fmt.Errorf("setup failed: %w", err)
 				}
 				setupDone = true
 			}
 		}
 	}
 
-	// Write .env from registry env_vars (skip if service wrote its own via install action)
+	// Write .env from registry env_vars (skip if service wrote its own via setup action)
 	if !setupDone {
 		envFile := config.ServiceEnvFile(name)
 		if _, err := os.Stat(envFile); os.IsNotExist(err) {
@@ -144,17 +144,17 @@ func InstallWithSetup(name string, progress func(string), setupFunc SetupFunc) e
 	chownServiceDir(name)
 
 	// Get version from binary for progress message
-	if version := GetInstalledVersion(name); version != "" {
-		progress(fmt.Sprintf("%s installed (%s)", name, version))
+	if version := GetVersion(name); version != "" {
+		progress(fmt.Sprintf("%s downloaded (%s)", name, version))
 	} else {
-		progress(fmt.Sprintf("%s installed", name))
+		progress(fmt.Sprintf("%s downloaded", name))
 	}
 
 	return nil
 }
 
-func describeInstallAction(binaryPath string) ([]byte, error) {
-	cmd := exec.Command(binaryPath, "install", "--describe")
+func describeSetupAction(binaryPath string) ([]byte, error) {
+	cmd := exec.Command(binaryPath, "setup", "--describe")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -162,12 +162,12 @@ func describeInstallAction(binaryPath string) ([]byte, error) {
 	return output, nil
 }
 
-func executeInstallAction(binaryPath string, values map[string]any) error {
+func executeSetupAction(binaryPath string, values map[string]any) error {
 	data, err := json.Marshal(values)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
-	cmd := exec.Command(binaryPath, "install", "--config", string(data))
+	cmd := exec.Command(binaryPath, "setup", "--config", string(data))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s: %s", err, string(output))
@@ -235,10 +235,10 @@ func Update(name string, progress func(string)) error {
 
 	binaryPath := config.ServiceBinary(name)
 
-	// Rename-first strategy: rename old binary before installing new
+	// Rename-first strategy: rename old binary before downloading new
 	// This works reliably on Windows even without sleep
 	var oldPath string
-	if IsInstalled(name) {
+	if IsDownloaded(name) {
 		oldPath = binaryPath + ".old"
 		os.Remove(oldPath) // cleanup from previous update
 		if err := os.Rename(binaryPath, oldPath); err != nil {
@@ -246,7 +246,7 @@ func Update(name string, progress func(string)) error {
 		}
 	}
 
-	if err := Install(name, progress); err != nil {
+	if err := Download(name, progress); err != nil {
 		// Restore old binary on failure
 		if oldPath != "" {
 			os.Rename(oldPath, binaryPath)
@@ -271,7 +271,7 @@ func Update(name string, progress func(string)) error {
 	return nil
 }
 
-func Uninstall(name string) error {
+func Remove(name string) error {
 	if err := Stop(name); err != nil {
 		return fmt.Errorf("failed to stop service: %w", err)
 	}
@@ -280,8 +280,8 @@ func Uninstall(name string) error {
 }
 
 func Check(name string) (string, error) {
-	if !IsInstalled(name) {
-		return "", fmt.Errorf("not installed")
+	if !IsDownloaded(name) {
+		return "", fmt.Errorf("not downloaded")
 	}
 
 	binary := config.ServiceBinary(name)
@@ -501,18 +501,18 @@ func userCommand(name string, args ...string) *exec.Cmd {
 
 
 // NeedsSetup checks if a service with has_setup requires setup.
-// Returns true if install --check reports ready: false.
+// Returns true if setup --check reports ready: false.
 func NeedsSetup(name string) bool {
 	svc, err := registry.GetService(name)
 	if err != nil || !svc.HasSetup {
 		return false
 	}
-	if !IsInstalled(name) {
+	if !IsDownloaded(name) {
 		return false
 	}
 
 	binary := config.ServiceBinary(name)
-	cmd := exec.Command(binary, "install", "--check")
+	cmd := exec.Command(binary, "setup", "--check")
 	output, err := cmd.Output()
 	if err != nil {
 		return true // can't check → assume needs setup
@@ -536,14 +536,13 @@ func HasSetup(name string) bool {
 	return svc.HasSetup
 }
 
-// RunSetupTerminal opens a terminal window running the service's install command.
+// RunSetupTerminal opens a terminal window running the service's setup command.
 func RunSetupTerminal(name string) error {
 	binary := config.ServiceBinary(name)
 
 	switch runtime.GOOS {
 	case "darwin":
-		// Write a temp script that runs the install command
-		script := fmt.Sprintf("#!/bin/bash\nsudo %s install\necho\necho 'Setup complete. Press any key to close.'\nread -n1\n", binary)
+		script := fmt.Sprintf("#!/bin/bash\nsudo %s setup\necho\necho 'Setup complete. Press any key to close.'\nread -n1\n", binary)
 		tmpFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s-setup.sh", name))
 		if err := os.WriteFile(tmpFile, []byte(script), 0755); err != nil {
 			return fmt.Errorf("write setup script: %w", err)
@@ -551,10 +550,10 @@ func RunSetupTerminal(name string) error {
 		return exec.Command("open", "-a", "Terminal.app", tmpFile).Start()
 
 	case "linux":
-		return exec.Command("x-terminal-emulator", "-e", binary, "install").Start()
+		return exec.Command("x-terminal-emulator", "-e", binary, "setup").Start()
 
 	case "windows":
-		return exec.Command("cmd", "/c", "start", "cmd", "/k", binary, "install").Start()
+		return exec.Command("cmd", "/c", "start", "cmd", "/k", binary, "setup").Start()
 
 	default:
 		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)

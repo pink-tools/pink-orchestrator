@@ -17,9 +17,9 @@ type Action struct {
 	Desc  string `json:"desc"`
 }
 
-// supportsActions checks if the installed binary version supports --actions.
+// supportsActions checks if the downloaded binary version supports --actions.
 func supportsActions(name string) bool {
-	v := GetInstalledVersion(name)
+	v := GetVersion(name)
 	if v == "" {
 		return false
 	}
@@ -27,9 +27,9 @@ func supportsActions(name string) bool {
 }
 
 // GetActions runs {binary} --actions and parses the JSON output.
-// Returns nil if the service is not installed or too old.
+// Returns nil if the service is not downloaded or too old.
 func GetActions(name string) []Action {
-	if !IsInstalled(name) || !supportsActions(name) {
+	if !IsDownloaded(name) || !supportsActions(name) {
 		return nil
 	}
 
@@ -45,10 +45,10 @@ func GetActions(name string) []Action {
 		return nil
 	}
 
-	// Filter out "install" — it's handled by the orchestrator's own install flow
+	// Filter out "setup" — it's handled by the orchestrator's own setup flow
 	filtered := actions[:0]
 	for _, a := range actions {
-		if a.Name != "install" {
+		if a.Name != "setup" {
 			filtered = append(filtered, a)
 		}
 	}

@@ -16,8 +16,8 @@ import (
 )
 
 func Start(name string) error {
-	if !IsInstalled(name) {
-		return fmt.Errorf("service not installed: %s", name)
+	if !IsDownloaded(name) {
+		return fmt.Errorf("service not downloaded: %s", name)
 	}
 
 	ClearLastError(name)
@@ -34,7 +34,7 @@ func Start(name string) error {
 	}
 
 	for _, dep := range svc.Dependencies {
-		// Only start daemon dependencies, CLI dependencies just need to be installed
+		// Only start daemon dependencies, CLI dependencies just need to be downloaded
 		if !registry.IsDaemon(dep) {
 			continue
 		}

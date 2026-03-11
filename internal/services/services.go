@@ -10,7 +10,7 @@ import (
 type Status string
 
 const (
-	StatusNotInstalled Status = "not_installed"
+	StatusNotDownloaded Status = "not_downloaded"
 	StatusStopped      Status = "stopped"
 	StatusRunning      Status = "running"
 	StatusError        Status = "error"
@@ -32,7 +32,7 @@ var (
 	mu                 sync.RWMutex
 	serviceLogs        = make(map[string]*ServiceState)
 	runningProcesses   = make(map[string]*processInfo)
-	installingServices = make(map[string]bool)
+	downloadingServices = make(map[string]bool)
 	onStatusUpdate     func()
 )
 
@@ -52,7 +52,7 @@ func notifyStatusUpdate() {
 }
 
 func GetStatus(name string) ServiceState {
-	state := ServiceState{Status: StatusNotInstalled}
+	state := ServiceState{Status: StatusNotDownloaded}
 
 	binary := config.ServiceBinary(name)
 	if _, err := os.Stat(binary); os.IsNotExist(err) {
@@ -78,16 +78,16 @@ func GetStatus(name string) ServiceState {
 	return state
 }
 
-func IsInstalled(name string) bool {
+func IsDownloaded(name string) bool {
 	binary := config.ServiceBinary(name)
 	_, err := os.Stat(binary)
 	return err == nil
 }
 
-func IsInstalling(name string) bool {
+func IsDownloading(name string) bool {
 	mu.RLock()
 	defer mu.RUnlock()
-	return installingServices[name]
+	return downloadingServices[name]
 }
 
 func updateServiceLog(name, line string, isError bool) {

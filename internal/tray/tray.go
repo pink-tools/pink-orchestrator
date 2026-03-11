@@ -29,14 +29,14 @@ type serviceMenu struct {
 	mStatus    *systray.MenuItem
 	mError     *systray.MenuItem
 	mUpdate    *systray.MenuItem
-	mInstall   *systray.MenuItem
+	mDownload  *systray.MenuItem
 	mSetup     *systray.MenuItem
 	mCheck     *systray.MenuItem
 	mStart     *systray.MenuItem
 	mStop      *systray.MenuItem
 	mRestart   *systray.MenuItem
 	mEnv       *systray.MenuItem
-	mUninstall *systray.MenuItem
+	mRemove    *systray.MenuItem
 	actions    []actionItem
 }
 
@@ -168,15 +168,15 @@ func (t *Tray) updateMenus() {
 
 func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 	status := services.GetStatus(sm.name)
-	installing := services.IsInstalling(sm.name)
+	downloading := services.IsDownloading(sm.name)
 
 	hasError := services.GetLastError(sm.name) != ""
 
 	var title string
 	switch {
-	case installing:
+	case downloading:
 		title = fmt.Sprintf("⏳ %s", sm.name)
-	case status.Status == services.StatusNotInstalled:
+	case status.Status == services.StatusNotDownloaded:
 		title = fmt.Sprintf("⚠ %s", sm.name)
 	case hasError:
 		title = fmt.Sprintf("✕ %s", sm.name)
@@ -205,7 +205,7 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 		sm.mError.Hide()
 	}
 
-	showActions := !installing && status.Status != services.StatusNotInstalled
+	showActions := !downloading && status.Status != services.StatusNotDownloaded
 	for _, a := range sm.actions {
 		if showActions {
 			a.menuItem.Show()
@@ -214,34 +214,34 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 		}
 	}
 
-	if installing {
+	if downloading {
 		sm.mUpdate.Hide()
-		sm.mInstall.Show()
-		sm.mInstall.Disable()
+		sm.mDownload.Show()
+		sm.mDownload.Disable()
 		sm.mSetup.Hide()
 		sm.mCheck.Hide()
 		sm.mStart.Hide()
 		sm.mStop.Hide()
 		sm.mRestart.Hide()
 		sm.mEnv.Hide()
-		sm.mUninstall.Hide()
-	} else if status.Status == services.StatusNotInstalled {
+		sm.mRemove.Hide()
+	} else if status.Status == services.StatusNotDownloaded {
 		sm.mUpdate.Hide()
-		sm.mInstall.Show()
-		sm.mInstall.Enable()
+		sm.mDownload.Show()
+		sm.mDownload.Enable()
 		sm.mSetup.Hide()
 		sm.mCheck.Hide()
 		sm.mStart.Hide()
 		sm.mStop.Hide()
 		sm.mRestart.Hide()
 		sm.mEnv.Hide()
-		sm.mUninstall.Hide()
+		sm.mRemove.Hide()
 	} else if sm.isDaemon {
 		sm.mCheck.Hide()
-		sm.mInstall.Hide()
+		sm.mDownload.Hide()
 		sm.mUpdate.Show()
 		sm.mEnv.Show()
-		sm.mUninstall.Show()
+		sm.mRemove.Show()
 		if sm.hasSetup && services.NeedsSetup(sm.name) {
 			sm.mSetup.Show()
 		} else {
@@ -257,7 +257,7 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 			sm.mRestart.Hide()
 		}
 	} else {
-		sm.mInstall.Hide()
+		sm.mDownload.Hide()
 		sm.mSetup.Hide()
 		sm.mCheck.Show()
 		sm.mUpdate.Show()
@@ -265,7 +265,7 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 		sm.mStop.Hide()
 		sm.mRestart.Hide()
 		sm.mEnv.Show()
-		sm.mUninstall.Show()
+		sm.mRemove.Show()
 	}
 }
 
@@ -274,7 +274,7 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 
 	sm.menuItem = systray.AddMenuItem(name, "")
 
-	sm.mInstall = sm.menuItem.AddSubMenuItem("Install", "")
+	sm.mDownload = sm.menuItem.AddSubMenuItem("Download", "")
 	sm.mSetup = sm.menuItem.AddSubMenuItem("Setup", "")
 	sm.mCheck = sm.menuItem.AddSubMenuItem("Check", "")
 	sm.mStart = sm.menuItem.AddSubMenuItem("Start", "")
@@ -282,7 +282,7 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	sm.mRestart = sm.menuItem.AddSubMenuItem("Restart", "")
 	sm.mEnv = sm.menuItem.AddSubMenuItem("Edit .env", "")
 
-	if services.IsInstalled(name) {
+	if services.IsDownloaded(name) {
 		for _, a := range services.GetActions(name) {
 			item := sm.menuItem.AddSubMenuItem(a.Label, "")
 			sm.actions = append(sm.actions, actionItem{name: a.Name, menuItem: item})
@@ -296,7 +296,7 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 
 	sm.menuItem.AddSubMenuItem("───────────", "").Disable()
 	sm.mUpdate = sm.menuItem.AddSubMenuItem("Update", "")
-	sm.mUninstall = sm.menuItem.AddSubMenuItem("Uninstall", "")
+	sm.mRemove = sm.menuItem.AddSubMenuItem("Remove", "")
 
 	sm.menuItem.AddSubMenuItem("───────────", "").Disable()
 	sm.mStatus = sm.menuItem.AddSubMenuItem("Status: -", "")
@@ -317,10 +317,10 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	}()
 
 	go func() {
-		for range sm.mInstall.ClickedCh {
+		for range sm.mDownload.ClickedCh {
 			go func() {
-				log.Info(context.Background(), "installing", log.Attr{K: "service", V: name})
-				services.InstallWithSetup(name, func(msg string) {
+				log.Info(context.Background(), "downloading", log.Attr{K: "service", V: name})
+				services.DownloadWithSetup(name, func(msg string) {
 					log.Info(context.Background(), msg, log.Attr{K: "service", V: name})
 					services.SetLastStatus(name, msg)
 				}, func(specJSON []byte) (map[string]any, bool) {
@@ -383,8 +383,8 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	}()
 
 	go func() {
-		for range sm.mUninstall.ClickedCh {
-			services.Uninstall(name)
+		for range sm.mRemove.ClickedCh {
+			services.Remove(name)
 			t.updateMenus()
 		}
 	}()
@@ -441,7 +441,7 @@ func (t *Tray) startAllServices() {
 			continue
 		}
 		status := services.GetStatus(sm.name)
-		if status.Status == services.StatusNotInstalled || status.Status == services.StatusRunning {
+		if status.Status == services.StatusNotDownloaded || status.Status == services.StatusRunning {
 			continue
 		}
 		log.Info(context.Background(), "starting", log.Attr{K: "service", V: sm.name})
@@ -477,7 +477,7 @@ func (t *Tray) updateAllServices() {
 
 	var updated, failed, skipped int
 	for _, svc := range svcs {
-		if !services.IsInstalled(svc.Name) {
+		if !services.IsDownloaded(svc.Name) {
 			skipped++
 			continue
 		}

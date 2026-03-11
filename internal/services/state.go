@@ -141,7 +141,7 @@ func GetLatestReleaseTag(repo string) (string, error) {
 	return release.TagName, nil
 }
 
-func GetInstalledVersion(name string) string {
+func GetVersion(name string) string {
 	binary := config.ServiceBinary(name)
 	if _, err := os.Stat(binary); err != nil {
 		return ""
@@ -161,38 +161,38 @@ func GetInstalledVersion(name string) string {
 	return ""
 }
 
-func isNewer(latest, installed string) bool {
+func isNewer(latest, current string) bool {
 	latestV := latest
-	installedV := installed
+	currentV := current
 	if !strings.HasPrefix(latestV, "v") {
 		latestV = "v" + latestV
 	}
-	if !strings.HasPrefix(installedV, "v") {
-		installedV = "v" + installedV
+	if !strings.HasPrefix(currentV, "v") {
+		currentV = "v" + currentV
 	}
 
-	if !semver.IsValid(latestV) || !semver.IsValid(installedV) {
+	if !semver.IsValid(latestV) || !semver.IsValid(currentV) {
 		return false
 	}
 
-	return semver.Compare(latestV, installedV) > 0
+	return semver.Compare(latestV, currentV) > 0
 }
 
-func CheckUpdate(name string) (hasUpdate bool, installed, latest string, err error) {
+func CheckUpdate(name string) (hasUpdate bool, current, latest string, err error) {
 	svc, err := registry.GetService(name)
 	if err != nil {
 		return false, "", "", err
 	}
 
-	installed = GetInstalledVersion(name)
-	if installed == "" {
+	current = GetVersion(name)
+	if current == "" {
 		return false, "", "", nil
 	}
 
 	latest, err = GetLatestVersion(svc.Repo)
 	if err != nil {
-		return false, installed, "", err
+		return false, current, "", err
 	}
 
-	return isNewer(latest, installed), installed, latest, nil
+	return isNewer(latest, current), current, latest, nil
 }

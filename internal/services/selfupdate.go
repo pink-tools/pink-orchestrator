@@ -28,20 +28,20 @@ func GetOrchestratorLatestVersion() (string, error) {
 	return GetLatestVersion(orchestratorRepo)
 }
 
-func CheckOrchestratorUpdate() (hasUpdate bool, installed, latest string, err error) {
-	installed = orchestratorVersion
+func CheckOrchestratorUpdate() (hasUpdate bool, current, latest string, err error) {
+	current = orchestratorVersion
 
 	// dev version always needs update
-	if installed == "" || installed == "dev" {
-		return true, installed, "latest", nil
+	if current == "" || current == "dev" {
+		return true, current, "latest", nil
 	}
 
 	latest, err = GetOrchestratorLatestVersion()
 	if err != nil {
-		return false, installed, "", err
+		return false, current, "", err
 	}
 
-	return isNewer(latest, installed), installed, latest, nil
+	return isNewer(latest, current), current, latest, nil
 }
 
 func SelfUpdate(targetVersion string, progress func(string)) error {
