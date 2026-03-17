@@ -9,9 +9,9 @@ jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache: false
@@ -22,7 +22,7 @@ jobs:
       - name: Test run
         run: ./pink-orchestrator-darwin-arm64 --version
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: pink-orchestrator-darwin-arm64
           path: pink-orchestrator-darwin-arm64
@@ -30,9 +30,9 @@ jobs:
   build-macos-intel:
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache: false
@@ -43,7 +43,7 @@ jobs:
       - name: Test run
         run: ./pink-orchestrator-darwin-amd64 --version
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: pink-orchestrator-darwin-amd64
           path: pink-orchestrator-darwin-amd64
@@ -51,9 +51,9 @@ jobs:
   build-linux:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache: false
@@ -64,7 +64,7 @@ jobs:
       - name: Test run
         run: ./pink-orchestrator-linux-amd64 --version
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: pink-orchestrator-linux-amd64
           path: pink-orchestrator-linux-amd64
@@ -72,9 +72,9 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache: false
@@ -86,7 +86,7 @@ jobs:
       - name: Test run
         run: ./pink-orchestrator-windows-amd64.exe --version
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: pink-orchestrator-windows-amd64.exe
           path: pink-orchestrator-windows-amd64.exe
@@ -97,15 +97,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           path: dist
           merge-multiple: true
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: pink-orchestrator ${{ github.ref_name }}
           body_path: RELEASE_NOTES.md
