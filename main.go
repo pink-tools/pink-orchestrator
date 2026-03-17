@@ -59,7 +59,7 @@ func main() {
 				os.Exit(1)
 			}
 			os.Exit(0)
-		case "--service-update", "--service-restart", "--service-stop", "--service-start", "--service-download":
+		case "--service-update", "--service-restart", "--service-stop", "--service-start", "--service-download", "--service-reinstall":
 			if len(os.Args) < 3 {
 				fmt.Printf("Usage: pink-orchestrator %s <service-name>\n", os.Args[1])
 				os.Exit(1)
@@ -89,24 +89,20 @@ func main() {
 	}
 
 	// On Unix, require root privileges for service management.
-	// Loop restarts the child when it exits with code 42 (self-update restart).
 	if runtime.GOOS != "windows" && os.Getuid() != 0 {
 		home := os.Getenv("HOME")
-		for {
-			cmd := exec.Command("sudo", "env", fmt.Sprintf("HOME=%s", home), os.Args[0])
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			err := cmd.Run()
-			if err == nil {
-				os.Exit(0)
+		cmd := exec.Command("sudo", "env", fmt.Sprintf("HOME=%s", home), os.Args[0])
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				os.Exit(exitErr.ExitCode())
 			}
-			exitErr, ok := err.(*exec.ExitError)
-			if !ok || exitErr.ExitCode() != 42 {
-				fmt.Fprintf(os.Stderr, "Failed to elevate privileges: %v\n", err)
-				os.Exit(1)
-			}
+			fmt.Fprintf(os.Stderr, "Failed to elevate privileges: %v\n", err)
+			os.Exit(1)
 		}
+		os.Exit(0)
 	}
 
 	autoInstall()
@@ -222,6 +218,7 @@ Usage:
   pink-orchestrator --version                   Show version
   pink-orchestrator --update-all                Update all downloaded services
   pink-orchestrator --service-download <name>   Download a service
+  pink-orchestrator --service-reinstall <name>  Remove and re-download a service
   pink-orchestrator --service-update <name>     Update a service
   pink-orchestrator --service-restart <name>    Restart a service
   pink-orchestrator --service-stop <name>       Stop a service

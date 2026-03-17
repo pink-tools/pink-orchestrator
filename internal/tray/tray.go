@@ -51,15 +51,10 @@ func New() *Tray {
 func (t *Tray) Run() {
 	systray.Run(t.onReady, t.onExit)
 
-	if services.PendingRestart() {
+	if services.PendingRestart() && runtime.GOOS == "windows" {
 		log.Info(context.Background(), "restarting after update")
 		services.ReleaseLock()
-		if runtime.GOOS == "windows" {
-			// Batch script handles starting the new binary after this process exits
-			os.Exit(0)
-		}
-		// Exit code 42 signals the parent (sudo wrapper) to restart us
-		os.Exit(42)
+		os.Exit(0)
 	}
 }
 
@@ -524,13 +519,11 @@ func (t *Tray) updateOrchestrator() {
 		return
 	}
 
-	if services.PendingRestart() {
-		// Exit directly — systray.Quit() calls [NSApp terminate:] on macOS
-		// which invokes exit(0) before our code after systray.Run() can run.
+	if services.PendingRestart() && runtime.GOOS == "windows" {
 		log.Info(context.Background(), "restarting after update")
 		services.SaveState()
 		services.Shutdown()
 		services.ReleaseLock()
-		os.Exit(42)
+		os.Exit(0)
 	}
 }

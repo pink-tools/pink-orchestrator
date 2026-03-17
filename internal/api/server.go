@@ -135,6 +135,18 @@ func (s *Server) handle(conn net.Conn) {
 		}
 		conn.Write([]byte(fmt.Sprintf("ok:%s\n", strings.Join(msgs, "; "))))
 
+	case "reinstall":
+		services.Remove(arg)
+		var msgs []string
+		err := services.Download(arg, func(msg string) {
+			msgs = append(msgs, msg)
+		})
+		if err != nil {
+			conn.Write([]byte(fmt.Sprintf("error:%s\n", err.Error())))
+			return
+		}
+		conn.Write([]byte(fmt.Sprintf("ok:%s\n", strings.Join(msgs, "; "))))
+
 	default:
 		conn.Write([]byte("error:unknown command\n"))
 	}

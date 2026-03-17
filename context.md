@@ -9,6 +9,7 @@ Binaries: ~/pink-tools/<name>/<name>
     pink-orchestrator --version                   Show version
     pink-orchestrator --update-all                Update all downloaded services
     pink-orchestrator --service-download <name>   Download a service
+    pink-orchestrator --service-reinstall <name>  Remove and re-download a service
     pink-orchestrator --service-update <name>     Update a service
     pink-orchestrator --service-restart <name>    Restart a service
     pink-orchestrator --service-stop <name>       Stop a service
