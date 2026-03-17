@@ -82,6 +82,9 @@ func main() {
 		case "--services":
 			printDownloadedServices()
 			return
+		case "--registry":
+			printRegistry()
+			return
 		}
 	}
 
@@ -224,6 +227,7 @@ Usage:
   pink-orchestrator --service-stop <name>       Stop a service
   pink-orchestrator --service-start <name>      Start a service
   pink-orchestrator --services                  List downloaded services (JSON)
+  pink-orchestrator --registry                  List all available services
   pink-orchestrator --claude                    Print agent context
 
 Environment:
@@ -245,6 +249,21 @@ func printDownloadedServices() {
 	}
 	data, _ := json.Marshal(downloaded)
 	fmt.Println(string(data))
+}
+
+func printRegistry() {
+	svcs, err := registry.ListServices()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load registry: %v\n", err)
+		os.Exit(1)
+	}
+	for _, svc := range svcs {
+		status := "  "
+		if services.IsDownloaded(svc.Name) {
+			status = "✓ "
+		}
+		fmt.Printf("%s%s (%s)\n", status, svc.Name, svc.Type)
+	}
 }
 
 func updateAllServices() {

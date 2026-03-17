@@ -1,16 +1,12 @@
 package registry
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"gopkg.in/yaml.v3"
 )
@@ -74,34 +70,7 @@ func Load() (*Registry, error) {
 		return cached, nil
 	}
 
-	// Try remote first
-	if reg, err := refreshLocked(); err == nil {
-		return reg, nil
-	}
-
-	// Fallback to cache
-	cacheFile := config.RegistryCacheFile()
-	if data, err := os.ReadFile(cacheFile); err == nil {
-		var reg Registry
-		if err := yaml.Unmarshal(data, &reg); err == nil {
-			cached = &reg
-			return cached, nil
-		}
-	}
-
-	// Fallback to bundled
-	if exe, err := os.Executable(); err == nil {
-		bundled := filepath.Join(filepath.Dir(exe), "registry.yaml")
-		if data, err := os.ReadFile(bundled); err == nil {
-			var reg Registry
-			if err := yaml.Unmarshal(data, &reg); err == nil {
-				cached = &reg
-				return cached, nil
-			}
-		}
-	}
-
-	return nil, fmt.Errorf("failed to load registry")
+	return refreshLocked()
 }
 
 func Refresh() (*Registry, error) {
@@ -130,10 +99,6 @@ func refreshLocked() (*Registry, error) {
 	var reg Registry
 	if err := yaml.Unmarshal(data, &reg); err != nil {
 		return nil, fmt.Errorf("failed to parse registry: %w", err)
-	}
-
-	if err := os.WriteFile(config.RegistryCacheFile(), data, 0644); err != nil {
-		log.Warn(context.Background(), "failed to cache registry", log.Attr{K: "error", V: err.Error()})
 	}
 
 	cached = &reg
