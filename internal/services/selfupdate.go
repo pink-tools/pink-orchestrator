@@ -60,7 +60,7 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 	}
 	currentBinary, _ = filepath.EvalSymlinks(currentBinary)
 
-	tmpBinary := filepath.Join(os.TempDir(), "pink-orchestrator-update"+binaryExt())
+	tmpBinary := currentBinary + ".update"
 	if err := downloadFile(downloadURL, tmpBinary, progress); err != nil {
 		return fmt.Errorf("failed to download: %w", err)
 	}
