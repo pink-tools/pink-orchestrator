@@ -59,7 +59,7 @@ func main() {
 				os.Exit(1)
 			}
 			os.Exit(0)
-		case "--service-update", "--service-restart", "--service-stop", "--service-start":
+		case "--service-update", "--service-restart", "--service-stop", "--service-start", "--service-download":
 			if len(os.Args) < 3 {
 				fmt.Printf("Usage: pink-orchestrator %s <service-name>\n", os.Args[1])
 				os.Exit(1)
@@ -218,6 +218,7 @@ Usage:
   pink-orchestrator --health                    Check health
   pink-orchestrator --version                   Show version
   pink-orchestrator --update-all                Update all downloaded services
+  pink-orchestrator --service-download <name>   Download a service
   pink-orchestrator --service-update <name>     Update a service
   pink-orchestrator --service-restart <name>    Restart a service
   pink-orchestrator --service-stop <name>       Stop a service

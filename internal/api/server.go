@@ -124,6 +124,17 @@ func (s *Server) handle(conn net.Conn) {
 		}
 		conn.Write([]byte("ok:started\n"))
 
+	case "download":
+		var msgs []string
+		err := services.Download(arg, func(msg string) {
+			msgs = append(msgs, msg)
+		})
+		if err != nil {
+			conn.Write([]byte(fmt.Sprintf("error:%s\n", err.Error())))
+			return
+		}
+		conn.Write([]byte(fmt.Sprintf("ok:%s\n", strings.Join(msgs, "; "))))
+
 	default:
 		conn.Write([]byte("error:unknown command\n"))
 	}
