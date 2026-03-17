@@ -10,7 +10,7 @@ import (
 
 	"github.com/ncruces/zenity"
 	"github.com/pink-tools/pink-orchestrator/internal/player"
-	webview "github.com/webview/webview_go"
+	"github.com/pink-tools/pink-orchestrator/internal/webview"
 )
 
 // FormMain is the entry point for the --dialog subprocess.

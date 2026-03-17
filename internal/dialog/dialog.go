@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"html"
 
-	webview "github.com/webview/webview_go"
+	"github.com/pink-tools/pink-orchestrator/internal/webview"
 )
 
 // Request represents a dialog request from a service

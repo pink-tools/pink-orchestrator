@@ -12,6 +12,9 @@ import (
 	"runtime"
 	"strconv"
 
+	"os/signal"
+	"syscall"
+
 	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/api"
@@ -19,6 +22,7 @@ import (
 	"github.com/pink-tools/pink-orchestrator/internal/dialog"
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 	"github.com/pink-tools/pink-orchestrator/internal/services"
+	"github.com/pink-tools/pink-orchestrator/internal/systray"
 	"github.com/pink-tools/pink-orchestrator/internal/tray"
 )
 
@@ -128,8 +132,25 @@ func main() {
 	}
 	go apiServer.Start()
 
-	t := tray.New()
-	t.Run()
+	if systray.Available() {
+		t := tray.New()
+		t.Run()
+	} else {
+		runHeadless()
+	}
+}
+
+func runHeadless() {
+	services.RestoreState()
+	log.Info(context.Background(), "headless mode, waiting for signal")
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
+
+	log.Info(context.Background(), "shutting down")
+	services.SaveState()
+	services.Shutdown()
 }
 
 func autoInstall() {

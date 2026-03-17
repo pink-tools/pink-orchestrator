@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/getlantern/systray"
+	"github.com/pink-tools/pink-orchestrator/internal/systray"
 	"github.com/pink-tools/pink-core"
 	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/dialog"
