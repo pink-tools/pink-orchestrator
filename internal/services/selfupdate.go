@@ -97,7 +97,8 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 		return fmt.Errorf("failed to replace binary: %w", err)
 	}
 
-	progress(fmt.Sprintf("Updated to %s. Please relaunch.", newVersion))
+	progress(fmt.Sprintf("Updated to %s. Exiting.", newVersion))
+	os.Exit(0)
 	return nil
 }
 
