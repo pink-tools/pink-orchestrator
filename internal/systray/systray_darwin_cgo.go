@@ -84,6 +84,10 @@ func showMenuItem(item *MenuItem) {
 	)
 }
 
+func resetSubmenu(item *MenuItem) {
+	C.reset_submenu(C.int(item.id))
+}
+
 //export systray_ready
 func systray_ready() {
 	systrayReady()

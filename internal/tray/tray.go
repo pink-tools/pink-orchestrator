@@ -266,8 +266,20 @@ func (t *Tray) updateServiceMenu(sm *serviceMenu) {
 
 func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	sm := &serviceMenu{name: name, isDaemon: registry.IsDaemon(name), hasSetup: services.HasSetup(name)}
-
 	sm.menuItem = systray.AddMenuItem(name, "")
+	t.populateServiceMenu(sm)
+	return sm
+}
+
+func (t *Tray) rebuildServiceMenu(sm *serviceMenu) {
+	sm.menuItem.ResetSubmenu()
+	sm.actions = nil
+	t.populateServiceMenu(sm)
+	t.updateServiceMenu(sm)
+}
+
+func (t *Tray) populateServiceMenu(sm *serviceMenu) {
+	name := sm.name
 
 	sm.mDownload = sm.menuItem.AddSubMenuItem("Download", "")
 	sm.mSetup = sm.menuItem.AddSubMenuItem("Setup", "")
@@ -303,10 +315,14 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 		for range sm.mUpdate.ClickedCh {
 			go func() {
 				log.Info(context.Background(), "updating", log.Attr{K: "service", V: name})
-				services.Update(name, func(msg string) {
+				if err := services.Update(name, func(msg string) {
 					log.Info(context.Background(), msg, log.Attr{K: "service", V: name})
 					services.SetLastStatus(name, msg)
-				})
+				}); err != nil {
+					log.Error(context.Background(), "update failed", log.Attr{K: "service", V: name}, log.Attr{K: "error", V: err.Error()})
+					services.SetLastError(name, err.Error())
+				}
+				t.rebuildServiceMenu(sm)
 			}()
 		}
 	}()
@@ -315,12 +331,16 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 		for range sm.mDownload.ClickedCh {
 			go func() {
 				log.Info(context.Background(), "downloading", log.Attr{K: "service", V: name})
-				services.DownloadWithSetup(name, func(msg string) {
+				if err := services.DownloadWithSetup(name, func(msg string) {
 					log.Info(context.Background(), msg, log.Attr{K: "service", V: name})
 					services.SetLastStatus(name, msg)
 				}, func(specJSON []byte) (map[string]any, bool) {
 					return dialog.ShowForm(specJSON)
-				})
+				}); err != nil {
+					log.Error(context.Background(), "download failed", log.Attr{K: "service", V: name}, log.Attr{K: "error", V: err.Error()})
+					services.SetLastError(name, err.Error())
+				}
+				t.rebuildServiceMenu(sm)
 			}()
 		}
 	}()
@@ -380,11 +400,9 @@ func (t *Tray) addServiceMenu(name string) *serviceMenu {
 	go func() {
 		for range sm.mRemove.ClickedCh {
 			services.Remove(name)
-			t.updateMenus()
+			t.rebuildServiceMenu(sm)
 		}
 	}()
-
-	return sm
 }
 
 func (t *Tray) handleAction(serviceName, actionName string) {

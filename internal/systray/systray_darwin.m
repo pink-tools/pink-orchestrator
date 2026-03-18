@@ -203,6 +203,14 @@ NSMenuItem *find_menu_item(NSMenu *ourMenu, NSNumber *menuId) {
   }
 }
 
+- (void) reset_submenu:(NSNumber*) menuId
+{
+  NSMenuItem* menuItem = find_menu_item(menu, menuId);
+  if (menuItem != NULL && menuItem.hasSubmenu) {
+    [menuItem.submenu removeAllItems];
+  }
+}
+
 - (void) quit
 {
   [NSApp terminate:self];
@@ -286,6 +294,11 @@ void hide_menu_item(int menuId) {
 void show_menu_item(int menuId) {
   NSNumber *mId = [NSNumber numberWithInt:menuId];
   runInMainThread(@selector(show_menu_item:), (id)mId);
+}
+
+void reset_submenu(int menuId) {
+  NSNumber *mId = [NSNumber numberWithInt:menuId];
+  runInMainThread(@selector(reset_submenu:), (id)mId);
 }
 
 void quit() {

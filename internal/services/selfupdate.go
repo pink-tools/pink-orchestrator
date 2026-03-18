@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pink-tools/pink-orchestrator/internal/config"
@@ -95,6 +97,16 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 	if err := os.Rename(tmpBinary, currentBinary); err != nil {
 		os.Remove(tmpBinary)
 		return fmt.Errorf("failed to replace binary: %w", err)
+	}
+	os.Chmod(currentBinary, 0755)
+
+	// Chown to real user when running as root via sudo
+	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
+		if u, err := user.Lookup(sudoUser); err == nil {
+			uid, _ := strconv.Atoi(u.Uid)
+			gid, _ := strconv.Atoi(u.Gid)
+			os.Chown(currentBinary, uid, gid)
+		}
 	}
 
 	progress(fmt.Sprintf("Updated to %s. Exiting.", newVersion))

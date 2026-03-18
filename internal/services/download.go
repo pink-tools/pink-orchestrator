@@ -415,9 +415,13 @@ func installSystemDeps(deps []registry.SystemDep, progress func(string)) error {
 				cmd = userCommand("bash", "-c", dep.UnixScript)
 			} else if dep.Brew != "" {
 				if !isCommandAvailable("brew") {
-					return fmt.Errorf("brew is not installed. Install from https://brew.sh")
+					progress("Installing Homebrew...")
+					if err := installBrew(); err != nil {
+						return fmt.Errorf("failed to install brew: %w", err)
+					}
 				}
 				cmd = userCommand("brew", "install", dep.Brew)
+				cmd.Env = append(os.Environ(), "HOMEBREW_NO_AUTO_UPDATE=1")
 			} else {
 				return fmt.Errorf("no install method for %s on darwin", dep.Name)
 			}
@@ -460,9 +464,25 @@ func installSystemDeps(deps []registry.SystemDep, progress func(string)) error {
 
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to install %s: %w", dep.Name, err)
 		}
+	}
+	return nil
+}
+
+func installBrew() error {
+	// Official Homebrew install script, must run as non-root user
+	cmd := userCommand("bash", "-c", `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	if !isCommandAvailable("brew") {
+		return fmt.Errorf("brew installed but not in PATH — restart terminal or add to PATH")
 	}
 	return nil
 }

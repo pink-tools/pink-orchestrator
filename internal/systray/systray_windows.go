@@ -943,3 +943,25 @@ func hideMenuItem(item *MenuItem) {
 func showMenuItem(item *MenuItem) {
 	addOrUpdateMenuItem(item)
 }
+
+func resetSubmenu(item *MenuItem) {
+	wt.muVisibleItems.Lock()
+	items := append([]uint32(nil), wt.visibleItems[uint32(item.id)]...)
+	wt.visibleItems[uint32(item.id)] = nil
+	wt.muVisibleItems.Unlock()
+
+	wt.muMenus.RLock()
+	menu, exists := wt.menus[uint32(item.id)]
+	wt.muMenus.RUnlock()
+	if !exists {
+		return
+	}
+
+	const MF_BYCOMMAND = 0x00000000
+	for _, id := range items {
+		pRemoveMenu.Call(uintptr(menu), uintptr(id), MF_BYCOMMAND)
+		wt.muMenuOf.Lock()
+		delete(wt.menuOf, id)
+		wt.muMenuOf.Unlock()
+	}
+}

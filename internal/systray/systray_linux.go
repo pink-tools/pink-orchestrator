@@ -342,6 +342,19 @@ func showMenuItem(item *MenuItem) {
 	}
 }
 
+func resetSubmenu(item *MenuItem) {
+	if !guiAvailable {
+		return
+	}
+	menuItemsMu.Lock()
+	defer menuItemsMu.Unlock()
+	node := findNode(int(item.id))
+	if node != nil {
+		newMenu := gtkMenuNew()
+		gtkMenuItemSetSubmenu(node.widget, newMenu)
+	}
+}
+
 // iconBytesToFilePath writes icon bytes to a temp file and returns its path.
 func iconBytesToFilePath(iconBytes []byte) (string, error) {
 	f, err := os.CreateTemp("", "systray_icon_")

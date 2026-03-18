@@ -153,17 +153,17 @@ func runHeadless() {
 }
 
 func autoInstall() {
-	currentPath, err := os.Executable()
+	execPath, err := os.Executable()
 	if err != nil {
 		return
 	}
-	currentPath, err = filepath.EvalSymlinks(currentPath)
+	realPath, err := filepath.EvalSymlinks(execPath)
 	if err != nil {
 		return
 	}
 
 	expectedPath := core.BinaryPath("pink-orchestrator")
-	if currentPath == expectedPath {
+	if realPath == expectedPath {
 		return
 	}
 
@@ -175,7 +175,7 @@ func autoInstall() {
 		os.Exit(1)
 	}
 
-	data, err := os.ReadFile(currentPath)
+	data, err := os.ReadFile(realPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to read binary: %v\n", err)
 		os.Exit(1)
@@ -186,26 +186,54 @@ func autoInstall() {
 		os.Exit(1)
 	}
 
-	// Chown to real user so the dir isn't stuck as root-only
-	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
-		if u, err := user.Lookup(sudoUser); err == nil {
-			uid, _ := strconv.Atoi(u.Uid)
-			gid, _ := strconv.Atoi(u.Gid)
-			os.Chown(core.PinkToolsDir(), uid, gid)
-			filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
-				if err == nil {
-					os.Chown(path, uid, gid)
-				}
-				return nil
-			})
-		}
+	// Replace original with symlink so future runs skip the copy
+	os.Remove(execPath)
+	if err := os.Symlink(expectedPath, execPath); err == nil {
+		fmt.Printf("Created symlink %s → %s\n", execPath, expectedPath)
 	}
+
+	// Chown to real user so the dir isn't stuck as root-only
+	chownToUser(core.PinkToolsDir(), targetDir, execPath)
 
 	fmt.Println("Installed. Restarting from new location...")
 
 	if err := services.ExecPath(expectedPath); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to exec: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+// chownToUser sets ownership of paths to the real user (SUDO_USER) when running as root.
+func chownToUser(paths ...string) {
+	sudoUser := os.Getenv("SUDO_USER")
+	if sudoUser == "" {
+		return
+	}
+	u, err := user.Lookup(sudoUser)
+	if err != nil {
+		return
+	}
+	uid, _ := strconv.Atoi(u.Uid)
+	gid, _ := strconv.Atoi(u.Gid)
+
+	for _, p := range paths {
+		info, err := os.Lstat(p)
+		if err != nil {
+			continue
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			os.Lchown(p, uid, gid)
+			continue
+		}
+		os.Chown(p, uid, gid)
+		if info.IsDir() {
+			filepath.Walk(p, func(path string, fi os.FileInfo, err error) error {
+				if err == nil {
+					os.Chown(path, uid, gid)
+				}
+				return nil
+			})
+		}
 	}
 }
 

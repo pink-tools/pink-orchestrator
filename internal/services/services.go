@@ -126,6 +126,17 @@ func GetLastStatus(name string) string {
 	return ""
 }
 
+func SetLastError(name, errMsg string) {
+	mu.Lock()
+	if serviceLogs[name] == nil {
+		serviceLogs[name] = &ServiceState{}
+	}
+	serviceLogs[name].LastError = errMsg
+	mu.Unlock()
+
+	notifyStatusUpdate()
+}
+
 func GetLastError(name string) string {
 	mu.RLock()
 	defer mu.RUnlock()

@@ -1,6 +1,6 @@
 # pink-orchestrator
 
-System tray manager for [pink-tools](https://github.com/pink-tools) services.
+Service manager for [pink-tools](https://github.com/pink-tools). Downloads, updates, and manages lifecycle of all services. Works as system tray app on desktop or headless on servers.
 
 ## Install
 
@@ -9,41 +9,56 @@ Download binary from [Releases](https://github.com/pink-tools/pink-orchestrator/
 ## Usage
 
 ```bash
-pink-orchestrator                         # Start in system tray
-pink-orchestrator --health                # Check health
-pink-orchestrator --version               # Show version
+pink-orchestrator                              # Start (tray if GUI available, headless otherwise)
 
-# CLI service management
-pink-orchestrator --service-start NAME    # Start service
-pink-orchestrator --service-stop NAME     # Stop service
-pink-orchestrator --service-restart NAME  # Restart service
-pink-orchestrator --service-update NAME   # Update service
+# Service management
+pink-orchestrator --service-download NAME      # Download service from GitHub
+pink-orchestrator --service-start NAME         # Start service
+pink-orchestrator --service-stop NAME          # Stop service
+pink-orchestrator --service-restart NAME       # Restart service
+pink-orchestrator --service-update NAME        # Check and install update
+pink-orchestrator --service-reinstall NAME     # Remove and re-download
 
-# Self-update
-pink-orchestrator --update                # Update orchestrator itself
+# Updates
+pink-orchestrator --update                     # Update orchestrator itself
+pink-orchestrator --update-all                 # Update all downloaded services
+
+# Info
+pink-orchestrator --services                   # List downloaded services (JSON)
+pink-orchestrator --registry                   # List all available services
+pink-orchestrator --version                    # Show version
+pink-orchestrator --health                     # Check health
 ```
 
-Right-click tray icon to:
-- Install/uninstall services
-- Start/stop/restart services
-- Edit .env configuration
-- Check for updates
+On desktop, right-click tray icon to manage services via GUI.
 
 ## Services
 
 | Service | Type | Description |
 |---------|------|-------------|
-| pink-transcriber | daemon | Speech-to-text via whisper.cpp |
-| pink-voice | daemon | Voice input with Ctrl+Q hotkey |
+| pink-agent | daemon | Telegram bot for Claude Code sessions |
+| pink-transcriber | cli | Speech-to-text via whisper.cpp |
+| pink-whisper | daemon | whisper.cpp TCP server with auto-setup |
+| pink-voice | daemon | Voice input with configurable hotkey |
 | pink-elevenlabs | cli | Text-to-speech via ElevenLabs API |
-| pink-agent | daemon | Telegram bot for Claude Code |
+
+## Server Deployment
+
+```bash
+# Download and start on a headless server
+pink-orchestrator --service-download pink-agent
+pink-orchestrator --service-start pink-agent
+```
+
+Install as systemd service for auto-restart on boot.
 
 ## Paths
 
 | Item | Path |
 |------|------|
-| Services | `/Users/pink-tools/{service}/` |
-| State | `/Users/pink-tools/pink-orchestrator/` |
+| Services | `~/pink-tools/{service}/` |
+| State | `~/pink-tools/pink-orchestrator/` |
+| Registry | `~/pink-tools/pink-orchestrator/registry.yaml` |
 
 ## Build from Source
 

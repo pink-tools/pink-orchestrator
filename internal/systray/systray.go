@@ -192,6 +192,11 @@ func (item *MenuItem) Show() {
 	showMenuItem(item)
 }
 
+// ResetSubmenu removes all children from this menu item's submenu.
+func (item *MenuItem) ResetSubmenu() {
+	resetSubmenu(item)
+}
+
 // Checked returns if the menu item has a check mark
 func (item *MenuItem) Checked() bool {
 	return item.checked
