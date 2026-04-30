@@ -49,3 +49,21 @@ services:
       - name: claude
         unix_script: "curl -fsSL https://claude.ai/install.sh | bash"
         winget: Anthropic.ClaudeCode
+
+  - name: pink-silero
+    repo: pink-tools/pink-silero
+    type: daemon
+    system_deps:
+      - name: ffmpeg
+        brew: ffmpeg
+        apt: ffmpeg
+        winget: Gyan.FFmpeg
+      - name: uv
+        brew: uv
+        unix_script: "curl -LsSf https://astral.sh/uv/install.sh | sh"
+
+  - name: pink-tts
+    repo: pink-tools/pink-tts
+    type: cli
+    dependencies:
+      - pink-silero
