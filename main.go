@@ -29,7 +29,14 @@ import (
 //go:embed context.md
 var claudeContext string
 
+//go:embed registry.yaml
+var embeddedRegistry []byte
+
 var version = "dev"
+
+func init() {
+	registry.SetEmbedded(embeddedRegistry)
+}
 
 func main() {
 	if len(os.Args) > 1 {

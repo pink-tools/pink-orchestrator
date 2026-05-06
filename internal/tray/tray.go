@@ -87,7 +87,8 @@ func (t *Tray) onExit() {
 func (t *Tray) buildMenu() {
 	svcs, err := registry.ListServices()
 	if err != nil {
-		mError := systray.AddMenuItem("Failed to load registry", "")
+		log.Error(context.Background(), "registry load failed in buildMenu", log.Attr{K: "error", V: err.Error()})
+		mError := systray.AddMenuItem(fmt.Sprintf("Registry: %v", err), "")
 		mError.Disable()
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "")

@@ -1,12 +1,16 @@
 package registry
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/pink-tools/pink-core/log"
 	"github.com/pink-tools/pink-orchestrator/internal/config"
 	"gopkg.in/yaml.v3"
 )
@@ -51,9 +55,14 @@ type SystemDep struct {
 }
 
 var (
-	cacheMu sync.RWMutex
-	cached  *Registry
+	cacheMu  sync.RWMutex
+	cached   *Registry
+	embedded []byte
 )
+
+func SetEmbedded(data []byte) {
+	embedded = data
+}
 
 func Load() (*Registry, error) {
 	cacheMu.RLock()
@@ -80,29 +89,89 @@ func Refresh() (*Registry, error) {
 }
 
 func refreshLocked() (*Registry, error) {
+	ctx := context.Background()
+
+	if reg, data, err := fetchNetwork(); err == nil {
+		cached = reg
+		writeDiskCache(data)
+		return cached, nil
+	} else {
+		log.Warn(ctx, "registry network fetch failed", log.Attr{K: "error", V: err.Error()})
+	}
+
+	if reg, err := loadDisk(); err == nil {
+		log.Info(ctx, "registry loaded from disk cache")
+		cached = reg
+		return cached, nil
+	} else if !os.IsNotExist(err) {
+		log.Warn(ctx, "registry disk cache unusable", log.Attr{K: "error", V: err.Error()})
+	}
+
+	if reg, err := loadEmbedded(); err == nil {
+		log.Info(ctx, "registry loaded from embedded fallback")
+		cached = reg
+		return cached, nil
+	} else {
+		return nil, fmt.Errorf("registry unavailable: network, disk cache, embedded all failed: %w", err)
+	}
+}
+
+func fetchNetwork() (*Registry, []byte, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Get(config.RegistryURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch registry: %w", err)
+		return nil, nil, fmt.Errorf("fetch: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("registry fetch failed: %d", resp.StatusCode)
+		return nil, nil, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read registry: %w", err)
+		return nil, nil, fmt.Errorf("read body: %w", err)
 	}
 
 	var reg Registry
 	if err := yaml.Unmarshal(data, &reg); err != nil {
-		return nil, fmt.Errorf("failed to parse registry: %w", err)
+		return nil, nil, fmt.Errorf("parse: %w", err)
 	}
+	return &reg, data, nil
+}
 
-	cached = &reg
-	return cached, nil
+func loadDisk() (*Registry, error) {
+	data, err := os.ReadFile(config.RegistryCacheFile())
+	if err != nil {
+		return nil, err
+	}
+	var reg Registry
+	if err := yaml.Unmarshal(data, &reg); err != nil {
+		return nil, fmt.Errorf("parse: %w", err)
+	}
+	return &reg, nil
+}
+
+func loadEmbedded() (*Registry, error) {
+	if len(embedded) == 0 {
+		return nil, fmt.Errorf("no embedded registry")
+	}
+	var reg Registry
+	if err := yaml.Unmarshal(embedded, &reg); err != nil {
+		return nil, fmt.Errorf("parse: %w", err)
+	}
+	return &reg, nil
+}
+
+func writeDiskCache(data []byte) {
+	path := config.RegistryCacheFile()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		log.Warn(context.Background(), "registry cache mkdir failed", log.Attr{K: "error", V: err.Error()})
+		return
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		log.Warn(context.Background(), "registry cache write failed", log.Attr{K: "error", V: err.Error()})
+	}
 }
 
 func GetService(name string) (*Service, error) {
@@ -142,6 +211,7 @@ func MaxServiceNameLen() int {
 
 	reg, err := Load()
 	if err != nil {
+		log.Error(context.Background(), "registry unavailable in MaxServiceNameLen", log.Attr{K: "error", V: err.Error()})
 		return maxLen
 	}
 	for _, svc := range reg.Services {
