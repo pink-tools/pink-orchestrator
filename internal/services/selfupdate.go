@@ -83,10 +83,25 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 	progress("Installing update...")
 
 	if runtime.GOOS == "windows" {
-		// Windows can't replace a running binary — use background batch script
-		if err := runWindowsUpdater(currentBinary, tmpBinary, os.Getpid(), true); err != nil {
+		// Windows allows renaming a running .exe but not modifying or deleting it.
+		// Swap files in-process so failures surface here, before we exit — otherwise
+		// a deferred move-after-exit can silently fail (Defender lock etc.) and a
+		// later `start` re-launches the OLD binary, looping forever.
+		oldBinary := currentBinary + ".old"
+		os.Remove(oldBinary)
+		if err := os.Rename(currentBinary, oldBinary); err != nil {
 			os.Remove(tmpBinary)
-			return fmt.Errorf("failed to start updater: %w", err)
+			return fmt.Errorf("failed to rename current binary: %w", err)
+		}
+		if err := os.Rename(tmpBinary, currentBinary); err != nil {
+			os.Rename(oldBinary, currentBinary)
+			os.Remove(tmpBinary)
+			return fmt.Errorf("failed to install new binary: %w", err)
+		}
+		if err := scheduleWindowsRespawn(currentBinary, oldBinary, os.Getpid()); err != nil {
+			os.Rename(currentBinary, tmpBinary)
+			os.Rename(oldBinary, currentBinary)
+			return fmt.Errorf("failed to schedule restart: %w", err)
 		}
 		pendingRestart = true
 		progress("Update complete. Restarting...")
@@ -114,13 +129,6 @@ func SelfUpdate(targetVersion string, progress func(string)) error {
 	return nil
 }
 
-func binaryExt() string {
-	if runtime.GOOS == "windows" {
-		return ".exe"
-	}
-	return ""
-}
-
 func getVersionFromBinary(path string) string {
 	cmd := exec.Command(path, "--version")
 	out, err := cmd.Output()
@@ -135,32 +143,21 @@ func getVersionFromBinary(path string) string {
 	return ""
 }
 
-func runWindowsUpdater(targetPath, newBinary string, pid int, autoRestart bool) error {
-	var script string
-	if autoRestart {
-		script = fmt.Sprintf(`@echo off
+// scheduleWindowsRespawn writes a batch script that waits for the current
+// process to exit, deletes the renamed-aside old binary, and starts the new
+// one. The binary swap itself happens in-process before this is called.
+func scheduleWindowsRespawn(targetPath, oldBinary string, pid int) error {
+	script := fmt.Sprintf(`@echo off
 :wait
 tasklist /FI "PID eq %d" | find "%d" >nul
 if not errorlevel 1 (
     timeout /t 1 /nobreak >nul
     goto wait
 )
-move /Y "%s" "%s"
+del /F /Q "%s"
 start "" "%s"
 del "%%~f0"
-`, pid, pid, newBinary, targetPath, targetPath)
-	} else {
-		script = fmt.Sprintf(`@echo off
-:wait
-tasklist /FI "PID eq %d" | find "%d" >nul
-if not errorlevel 1 (
-    timeout /t 1 /nobreak >nul
-    goto wait
-)
-move /Y "%s" "%s"
-del "%%~f0"
-`, pid, pid, newBinary, targetPath)
-	}
+`, pid, pid, oldBinary, targetPath)
 
 	scriptPath := filepath.Join(os.TempDir(), "pink-orchestrator-updater.bat")
 	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {

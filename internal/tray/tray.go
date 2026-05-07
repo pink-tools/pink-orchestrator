@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"syscall"
 
 	"github.com/pink-tools/pink-orchestrator/internal/systray"
@@ -15,6 +16,8 @@ import (
 	"github.com/pink-tools/pink-orchestrator/internal/registry"
 	"github.com/pink-tools/pink-orchestrator/internal/services"
 )
+
+var updateOrchMu sync.Mutex
 
 type actionItem struct {
 	name     string // action name (e.g. "settings")
@@ -516,20 +519,26 @@ func (t *Tray) updateAllServices() {
 }
 
 func (t *Tray) updateOrchestrator() {
+	if !updateOrchMu.TryLock() {
+		log.Info(context.Background(), "orchestrator update already in progress, skipping")
+		return
+	}
+	defer updateOrchMu.Unlock()
+
 	log.Info(context.Background(), "checking for orchestrator updates")
 
-	hasUpdate, _, latest, err := services.CheckOrchestratorUpdate()
+	hasUpdate, current, latest, err := services.CheckOrchestratorUpdate()
 	if err != nil {
 		log.Error(context.Background(), "failed to check for updates", log.Attr{K: "error", V: err.Error()})
 		return
 	}
 
 	if !hasUpdate {
-		log.Info(context.Background(), "orchestrator is up to date")
+		log.Info(context.Background(), "orchestrator is up to date", log.Attr{K: "current", V: current}, log.Attr{K: "latest", V: latest})
 		return
 	}
 
-	log.Info(context.Background(), "updating orchestrator", log.Attr{K: "version", V: latest})
+	log.Info(context.Background(), "updating orchestrator", log.Attr{K: "current", V: current}, log.Attr{K: "latest", V: latest})
 
 	if err := services.SelfUpdate(latest, func(msg string) {
 		log.Info(context.Background(), msg)
