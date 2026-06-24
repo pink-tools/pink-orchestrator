@@ -1,11 +1,17 @@
 # Binary
 pink-orchestrator
 
+# Release build outputs (CI artifacts)
+pink-orchestrator-darwin-arm64
+pink-orchestrator-darwin-amd64
+pink-orchestrator-linux-amd64
+pink-orchestrator-windows-amd64.exe
+
 # Environment
 .env
 
-# AI docs (local only)
-ai-docs/
+# AI docs (local only, symlinked to vault)
+ai-docs
 
 # macOS
 .DS_Store
