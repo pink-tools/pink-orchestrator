@@ -9,3 +9,6 @@ ai-docs/
 
 # macOS
 .DS_Store
+
+# Binary (sub-tool, bundled at build)
+pink-silero
